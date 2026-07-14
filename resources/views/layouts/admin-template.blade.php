@@ -3,6 +3,7 @@
 <head>
     <title>{{ $title ?? 'Dashboard' }} | Phish Block Monitoring System</title>
     @include('layouts.template-head')
+    @include('layouts.dark-mode')
 </head>
 <body>
     <div id="overlay" class="overlay"></div>
@@ -18,6 +19,9 @@
 
         <div>
             <ul class="list-unstyled d-flex align-items-center mb-0 gap-1">
+                <li class="me-2">
+                    @include('layouts.theme-toggle')
+                </li>
                 <li>
                     <a class="position-relative btn-icon btn-sm btn-light btn rounded-circle" data-bs-toggle="dropdown" aria-expanded="false" href="#" role="button">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
@@ -90,8 +94,8 @@
     <aside id="sidebar" class="sidebar">
         <div class="logo-area">
             <a href="{{ route('admin.dashboard') }}" class="d-inline-flex align-items-center">
-                <img src="{{ asset('template/dist/assets/images/logo-icon.svg') }}" alt="" width="24">
-                <span class="logo-text ms-2"><img src="{{ asset('template/dist/assets/images/logo.svg') }}" alt=""></span>
+                <img src="{{ asset('images/branding/phish-block-logo.png') }}" alt="Phish Block logo" width="36" height="36">
+                <span class="logo-text ms-2 fw-bold fs-4 text-dark">Phish Block</span>
             </a>
         </div>
         <ul class="nav flex-column">
