@@ -17,7 +17,10 @@
             <div class="col-lg-6 col-12">
                 <div class="card h-100">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center px-4 py-3">
-                        <h4 class="mb-0 h5">{{ $campus['name'] }}</h4>
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="{{ asset('images/slsu.webp') }}" alt="Southern Leyte State University seal" width="42" height="42" class="rounded-circle border bg-white p-1">
+                            <h4 class="mb-0 h5">{{ $campus['name'] }}</h4>
+                        </div>
                         <span class="badge bg-{{ strtolower($campus['status']) === 'healthy' ? 'success' : 'warning' }}">{{ $campus['status'] }}</span>
                     </div>
                     <div class="card-body p-4">

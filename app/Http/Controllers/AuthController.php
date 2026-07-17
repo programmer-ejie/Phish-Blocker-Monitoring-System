@@ -4,22 +4,20 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    private const EMAIL = 'admin@gmail.com';
-    private const PASSWORD = 'admin';
-
     public function showLogin(Request $request): View|RedirectResponse
     {
-        if ($request->session()->get('is_admin_authenticated')) {
+        if (Auth::check()) {
             return redirect()->route('admin.dashboard');
         }
 
         return view('auth.login', [
-            'defaultEmail' => self::EMAIL,
-            'defaultPassword' => self::PASSWORD,
+            'defaultEmail' => '',
+            'defaultPassword' => '',
         ]);
     }
 
@@ -30,32 +28,28 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (
-            $credentials['email'] !== self::EMAIL ||
-            $credentials['password'] !== self::PASSWORD
-        ) {
+        if (! Auth::attempt([
+            'email' => $credentials['email'],
+            'password' => $credentials['password'],
+            'is_active' => true,
+        ])) {
             return back()
                 ->withInput($request->only('email'))
                 ->withErrors([
-                    'email' => 'Invalid credentials. Use admin@gmail.com and admin for the static demo login.',
+                    'email' => 'The provided credentials do not match an active account.',
                 ]);
         }
 
-        $request->session()->put('is_admin_authenticated', true);
-        $request->session()->put('admin_user', [
-            'name' => 'System Administrator',
-            'email' => self::EMAIL,
-            'role' => 'Security Operations Lead',
-        ]);
+        $request->session()->regenerate();
 
         return redirect()
             ->route('admin.dashboard')
-            ->with('status', 'Welcome back. Static admin access granted.');
+            ->with('status', 'Welcome back.');
     }
 
     public function logout(Request $request): RedirectResponse
     {
-        $request->session()->forget(['is_admin_authenticated', 'admin_user']);
+        Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

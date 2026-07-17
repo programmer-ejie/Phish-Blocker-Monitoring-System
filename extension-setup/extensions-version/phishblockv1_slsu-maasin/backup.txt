@@ -1,0 +1,99 @@
+let campusCode = null;
+let configLoaded = false;
+let pendingMessages = [];
+
+fetch(chrome.runtime.getURL("config.json"))
+  .then(r => r.json())
+  .then(cfg => {
+    campusCode = cfg.campus_uniqcode;
+    configLoaded = true;
+
+    if (pendingMessages.length > 0) {
+      for (const item of pendingMessages) {
+        processPhishCheck(item.msg, item.sender, item.sendResponse);
+      }
+      pendingMessages = [];
+    }
+  })
+  .catch(err => {
+    console.error("Failed to load config.json", err);
+  });
+
+const API_BASE = "https://phishing-api-uijh.onrender.com/check_url?url=";
+
+// start sa local DB logging [ temporary ]
+const LOG_API = "http://localhost/xampp/PhishBlock-v1/logs.php";
+
+function logToLocalDB(result) {
+  if (!result) return;
+  result.campus_uniqcode = campusCode;
+  fetch(LOG_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(result)
+  }).catch(err => console.warn("Local DB log failed:", err));
+}
+
+// end sa local DB logging [ temporary ]
+
+function fetchWithTimeout(url, opts = {}, timeout = 8000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("fetch-timeout")), timeout);
+    fetch(url, opts).then(
+      r => {
+        clearTimeout(timer);
+        resolve(r);
+      },
+      err => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+function processPhishCheck(msg, sender, sendResponse) {
+  try {
+    if (!msg || !msg.action) return;
+    if (msg.action !== "checkPhish" && msg.action !== "fetch_phish_api") return;
+    if (!msg.url) {
+      sendResponse({ ok: false, error: "no-url-provided" });
+      return;
+    }
+
+    const target = msg.url;
+    const apiUrl = API_BASE + encodeURIComponent(target);
+
+    fetchWithTimeout(apiUrl, { method: "GET" }, 9000)
+      .then(async resp => {
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => "");
+          sendResponse({ ok: false, status: resp.status, text });
+          return;
+        }
+
+        const json = await resp.json().catch(() => null);
+        logToLocalDB(json);
+        sendResponse({ ok: true, json });
+      })
+      .catch(err => {
+        sendResponse({ ok: false, error: String(err) });
+      });
+  } catch (e) {
+    sendResponse({ ok: false, error: String(e) });
+  }
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  try {
+    if (!configLoaded) {
+      pendingMessages.push({ msg, sender, sendResponse });
+      return true;
+    }
+
+    processPhishCheck(msg, sender, sendResponse);
+    return true;
+  } catch (e) {
+    sendResponse({ ok: false, error: String(e) });
+  }
+});

@@ -54,6 +54,12 @@
             padding-bottom: 2.5rem;
         }
 
+        .public-page-shell { display: flex; min-height: 100vh; min-height: 100dvh; padding-bottom: 68px; flex-direction: column; }
+        .site-footer { position: fixed; right: 0; bottom: 0; left: 0; z-index: 1025; margin: 0; padding: 0.95rem 1.5rem; border-top: 1px solid #e4e7ec; background: rgba(255, 255, 255, 0.95); box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.06); color: #667085; backdrop-filter: blur(14px); }
+        .site-footer__inner { display: flex; align-items: center; justify-content: center; gap: 0.65rem; font-family: 'Poppins', sans-serif; font-size: 0.82rem; line-height: 1.5; text-align: center; }
+        .site-footer__brand { color: #344054; font-weight: 650; }
+        .site-footer__separator { width: 3px; height: 3px; border-radius: 50%; background: #98a2b3; }
+
         .landing-hero .hero-title {
             font-size: clamp(3rem, 5.2vw, 5.5rem);
             line-height: 1.06;
@@ -113,10 +119,15 @@
             .landing-hero .hero-title {
                 font-size: clamp(2.5rem, 12vw, 4rem);
             }
+
+            .public-page-shell { padding-bottom: 88px; }
+            .site-footer { padding: 0.8rem 1rem; }
+            .site-footer__inner { flex-wrap: wrap; gap: 0.25rem 0.5rem; }
+            .site-footer__description { width: 100%; }
         }
     </style>
 
-    <main class="main" id="top">
+    <main class="main public-page-shell" id="top">
         <nav class="public-header-nav navbar navbar-expand-lg navbar-light fixed-top px-3 px-lg-5">
             <div class="container-fluid">
                 <a class="public-brand navbar-brand" href="{{ route('home') }}">
@@ -324,7 +335,7 @@
                                         <div class="carousel-item position-relative {{ $loop->first ? 'active' : '' }}">
                                             <div class="card shadow" style="border-radius:10px;">
                                                 <div class="position-absolute start-0 top-0 translate-middle">
-                                                    <span class="d-inline-grid bg-white rounded-circle shadow p-2"><img src="{{ asset('images/branding/phish-block-logo.png') }}" height="49" width="49" alt="Phish Block detection" /></span>
+                                                    <span class="d-inline-grid bg-white rounded-circle shadow p-2"><img src="{{ asset('images/slsu.webp') }}" height="49" width="49" alt="Southern Leyte State University seal" /></span>
                                                 </div>
                                                 <div class="card-body p-4">
                                                     <p class="fw-medium mb-4">"{{ $record['reason'] }}"</p>
@@ -406,9 +417,7 @@
             </div>
         </section>
 
-        <div class="py-5 text-center">
-            <p class="mb-0 text-secondary fs--1 fw-medium">All rights reserved @ Phish Block Monitoring System</p>
-        </div>
+        @include('layouts.footer')
     </main>
 
     <script>

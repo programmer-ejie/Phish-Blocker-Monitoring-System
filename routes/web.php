@@ -14,7 +14,7 @@ Route::middleware('guest')->group(function (): void {
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-Route::middleware(EnsureStaticAdminAuthenticated::class)
+Route::middleware(['auth', EnsureStaticAdminAuthenticated::class])
     ->prefix('admin')
     ->name('admin.')
     ->group(function (): void {

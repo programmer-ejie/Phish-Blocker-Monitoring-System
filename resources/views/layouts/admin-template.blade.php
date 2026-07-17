@@ -36,26 +36,20 @@
                     </a>
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-md p-0">
                         <ul class="list-unstyled p-0 m-0">
-                            <li class="p-3 border-bottom">
-                                <div class="d-flex gap-3">
-                                    <img src="{{ asset('template/dist/assets/images/avatar-1.jpg') }}" alt="" class="avatar avatar-sm rounded-circle" />
-                                    <div class="flex-grow-1 small">
-                                        <p class="mb-0">Critical phishing spike detected</p>
-                                        <p class="mb-1">SLSU-TO has multiple blocked URLs</p>
-                                        <div class="text-secondary">5 minutes ago</div>
+                            @forelse (($notifications ?? []) as $notification)
+                                <li class="p-3 border-bottom">
+                                    <div class="d-flex gap-3">
+                                        <img src="{{ asset('images/slsu.webp') }}" alt="Southern Leyte State University seal" class="avatar avatar-sm rounded-circle bg-white p-1" />
+                                        <div class="flex-grow-1 small">
+                                            <p class="mb-0 fw-medium">{{ $notification['title'] }}</p>
+                                            <p class="mb-1">{{ $notification['campus'] }} · {{ $notification['severity'] }} · {{ $notification['status'] }}</p>
+                                            <div class="text-secondary">{{ $notification['time'] }}</div>
+                                        </div>
                                     </div>
-                                </div>
-                            </li>
-                            <li class="p-3 border-bottom">
-                                <div class="d-flex gap-3">
-                                    <img src="{{ asset('template/dist/assets/images/avatar-4.jpg') }}" alt="" class="avatar avatar-sm rounded-circle" />
-                                    <div class="flex-grow-1 small">
-                                        <p class="mb-0">Campus sync complete</p>
-                                        <p class="mb-1">SLSU-LU endpoint sync finished</p>
-                                        <div class="text-secondary">30 minutes ago</div>
-                                    </div>
-                                </div>
-                            </li>
+                                </li>
+                            @empty
+                                <li class="px-4 py-4 text-center small text-secondary">No alerts to display.</li>
+                            @endforelse
                             <li class="px-4 py-3 text-center">
                                 <a href="{{ route('admin.alerts') }}" class="text-primary">View all notifications</a>
                             </li>
@@ -64,12 +58,12 @@
                 </li>
                 <li class="ms-3 dropdown">
                     <a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="{{ asset('template/dist/assets/images/avatar-1.jpg') }}" alt="" class="avatar avatar-sm rounded-circle" />
+                        <img src="{{ asset('images/admin-profile.webp') }}" alt="Administrator profile" class="avatar avatar-sm rounded-circle" />
                     </a>
                     <div class="dropdown-menu dropdown-menu-end p-0" style="min-width: 220px;">
                         <div>
                             <div class="d-flex gap-3 align-items-center border-dashed border-bottom px-3 py-3">
-                                <img src="{{ asset('template/dist/assets/images/avatar-1.jpg') }}" alt="" class="avatar avatar-md rounded-circle" />
+                                <img src="{{ asset('images/admin-profile.webp') }}" alt="Administrator profile" class="avatar avatar-md rounded-circle" />
                                 <div>
                                     <h4 class="mb-0 small">{{ $adminUser['name'] ?? 'System Administrator' }}</h4>
                                     <p class="mb-0 small">{{ $adminUser['email'] ?? 'admin@gmail.com' }}</p>

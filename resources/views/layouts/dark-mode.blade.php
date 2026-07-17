@@ -179,6 +179,21 @@
         color: #f4f7fb !important;
     }
 
+    html[data-theme="dark"] .site-footer {
+        color: var(--pb-muted) !important;
+        border-color: var(--pb-border) !important;
+        background: var(--pb-surface) !important;
+    }
+
+    html[data-theme="dark"] .site-footer__brand,
+    html[data-theme="dark"] .site-footer__description {
+        color: var(--pb-text) !important;
+    }
+
+    html[data-theme="dark"] .site-footer__separator {
+        background: var(--pb-muted);
+    }
+
     html[data-theme="dark"] .sidebar .nav-link.is-current,
     html[data-theme="dark"] .sidebar .nav-link.active {
         color: #ff7655 !important;

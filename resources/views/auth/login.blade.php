@@ -60,10 +60,17 @@
         }
 
         .login-page {
-            min-height: calc(100vh - 76px);
+            min-height: 0;
+            flex: 1 0 auto;
             padding: 1.25rem;
             background: #f7f9fc;
         }
+
+        .auth-layout { display: flex; min-height: 100vh; min-height: 100dvh; padding-bottom: 68px; flex-direction: column; overflow-x: hidden; background: #f7f9fc; }
+        .site-footer { position: fixed; right: 0; bottom: 0; left: 0; z-index: 1025; padding: 0.95rem 1.5rem; border-top: 1px solid #e4e7ec; background: rgba(255, 255, 255, 0.95); box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.06); color: #667085; backdrop-filter: blur(14px); }
+        .site-footer__inner { display: flex; align-items: center; justify-content: center; gap: 0.65rem; font-size: 0.82rem; line-height: 1.5; text-align: center; }
+        .site-footer__brand { color: #344054; font-weight: 650; }
+        .site-footer__separator { width: 3px; height: 3px; border-radius: 50%; background: #98a2b3; }
 
         .login-shell {
             width: 100%;
@@ -105,17 +112,12 @@
         }
 
         @media (min-width: 992px) {
-            body {
-                overflow: hidden;
-            }
-
             .login-page {
-                height: calc(100vh - 76px);
-                min-height: 0;
+                min-height: calc(100vh - 144px);
             }
 
             .login-shell {
-                height: min(680px, calc(100vh - 108px));
+                height: min(680px, calc(100vh - 176px));
             }
         }
 
@@ -142,6 +144,13 @@
             .login-visual-panel {
                 min-height: 0;
             }
+        }
+
+        @media (max-width: 767.98px) {
+            .auth-layout { padding-bottom: 88px; }
+            .site-footer { padding: 0.8rem 1rem; }
+            .site-footer__inner { flex-wrap: wrap; gap: 0.25rem 0.5rem; }
+            .site-footer__description { width: 100%; }
         }
     </style>
 
@@ -225,4 +234,5 @@
             </section>
         </div>
     </main>
+    @include('layouts.footer')
 @endsection

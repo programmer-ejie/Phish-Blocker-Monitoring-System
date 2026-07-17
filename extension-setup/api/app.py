@@ -364,11 +364,11 @@ def hybrid_check(url, api_key=GOOGLE_API_KEY):
 
     # --- Final status ---
     if risk_level == "High":
-        status = "❌ Block"
+        status = "Block"
     elif risk_level == "Medium":
-        status = "⚠️ Suspicious"
+        status = "Suspicious"
     else:
-        status = "✅ Proceed"
+        status = "Proceed"
 
     return {
         "url": url,
@@ -395,7 +395,6 @@ class PhishingLog(BaseModel):
     reason: str | None = None
     computer_number: int | None = Field(default=None, gt=0)
     campus_name: str | None = Field(default=None, max_length=100)
-    action: str | None = Field(default=None, max_length=50)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -407,11 +406,6 @@ def save_phishing_log(log: PhishingLog) -> None:
         )
 
     payload = log.model_dump(exclude_none=True)
-    if "action" not in payload:
-        payload["action"] = (
-            "Blocked" if log.risk_level in {"High", "Critical"} else "Allowed"
-        )
-
     try:
         response = requests.post(
             SUPABASE_LOGS_URL,

@@ -159,6 +159,23 @@
             font-size: 1.15rem;
             text-align: center;
         }
+
+        html, body { min-height: 100%; }
+        .admin-page-content { display: flex; min-height: 100vh; padding-bottom: 72px !important; flex-direction: column; }
+        .admin-content-shell { display: flex; width: 100%; min-height: calc(100vh - 5rem); flex: 1 0 auto; flex-direction: column; }
+        .admin-content-main { flex: 1 0 auto; }
+        .site-footer { position: fixed; right: 0; bottom: 0; left: 240px; z-index: 1025; width: auto; margin: 0; padding: 0.95rem 1.5rem; border-top: 1px solid rgba(98, 105, 118, 0.16); background: rgba(255, 255, 255, 0.94); box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.06); color: #667085; backdrop-filter: blur(14px); }
+        .content.full .site-footer { left: 60px; }
+        .site-footer__inner { display: flex; align-items: center; justify-content: center; gap: 0.65rem; font-size: 0.82rem; line-height: 1.5; text-align: center; }
+        .site-footer__brand { color: #344054; font-weight: 650; }
+        .site-footer__separator { width: 3px; height: 3px; border-radius: 50%; background: #98a2b3; }
+        @media (max-width: 991.98px) { .site-footer { left: 0; } }
+        @media (max-width: 767.98px) {
+            .admin-page-content { padding-bottom: 88px !important; }
+            .site-footer { left: 0; padding: 0.8rem 1rem; }
+            .site-footer__inner { flex-wrap: wrap; gap: 0.25rem 0.5rem; }
+            .site-footer__description { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -183,32 +200,28 @@
                             <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
                             <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
                         </svg>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger mt-2 ms-n2">
-                            {{ $summary['critical_incidents'] }}
-                        </span>
+                        @if ($summary['critical_incidents'] > 0)
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger mt-2 ms-n2">
+                                {{ $summary['critical_incidents'] }}
+                            </span>
+                        @endif
                     </a>
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-md p-0">
                         <ul class="list-unstyled p-0 m-0">
-                            <li class="p-3 border-bottom">
-                                <div class="d-flex gap-3">
-                                    <img src="{{ asset('template/dist/assets/images/avatar-1.jpg') }}" alt="" class="avatar avatar-sm rounded-circle" />
-                                    <div class="flex-grow-1 small">
-                                        <p class="mb-0">Critical phishing spike detected</p>
-                                        <p class="mb-1">SLSU-TO has multiple blocked URLs</p>
-                                        <div class="text-secondary">5 minutes ago</div>
+                            @forelse ($notifications as $notification)
+                                <li class="p-3 border-bottom">
+                                    <div class="d-flex gap-3">
+                                        <img src="{{ asset('images/slsu.webp') }}" alt="Southern Leyte State University seal" class="avatar avatar-sm rounded-circle bg-white p-1" />
+                                        <div class="flex-grow-1 small">
+                                            <p class="mb-0 fw-medium">{{ $notification['title'] }}</p>
+                                            <p class="mb-1">{{ $notification['campus'] }} · {{ $notification['severity'] }} · {{ $notification['status'] }}</p>
+                                            <div class="text-secondary">{{ $notification['time'] }}</div>
+                                        </div>
                                     </div>
-                                </div>
-                            </li>
-                            <li class="p-3 border-bottom">
-                                <div class="d-flex gap-3">
-                                    <img src="{{ asset('template/dist/assets/images/avatar-4.jpg') }}" alt="" class="avatar avatar-sm rounded-circle" />
-                                    <div class="flex-grow-1 small">
-                                        <p class="mb-0">Review queue updated</p>
-                                        <p class="mb-1">{{ $summary['review_queue'] }} items waiting for analyst review</p>
-                                        <div class="text-secondary">30 minutes ago</div>
-                                    </div>
-                                </div>
-                            </li>
+                                </li>
+                            @empty
+                                <li class="px-4 py-4 text-center small text-secondary">No alerts to display.</li>
+                            @endforelse
                             <li class="px-4 py-3 text-center">
                                 <a href="{{ route('admin.alerts') }}" class="text-primary">View all notifications</a>
                             </li>
@@ -217,12 +230,12 @@
                 </li>
                 <li class="ms-3 dropdown">
                     <a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="{{ asset('template/dist/assets/images/avatar-1.jpg') }}" alt="" class="avatar avatar-sm rounded-circle" />
+                        <img src="{{ asset('images/admin-profile.webp') }}" alt="Administrator profile" class="avatar avatar-sm rounded-circle" />
                     </a>
                     <div class="admin-profile-menu dropdown-menu dropdown-menu-end p-0">
                         <div>
                             <div class="d-flex gap-3 align-items-center border-dashed border-bottom px-3 py-3">
-                                <img src="{{ asset('template/dist/assets/images/avatar-1.jpg') }}" alt="" class="avatar avatar-md rounded-circle" />
+                                <img src="{{ asset('images/admin-profile.webp') }}" alt="Administrator profile" class="avatar avatar-md rounded-circle" />
                                 <div>
                                     <h4 class="mb-0 small">{{ $adminUser['name'] ?? 'System Administrator' }}</h4>
                                     <p class="mb-0 small">{{ $adminUser['email'] ?? 'admin@gmail.com' }}</p>
@@ -288,16 +301,10 @@
         </ul>
     </aside>
 
-    <main id="content" class="content py-10">
-        <div class="container-fluid">
+    <main id="content" class="content admin-page-content py-10 pb-0">
+        <div class="container-fluid admin-content-shell">
             @yield('content')
-            <div class="row">
-                <div class="col-12">
-                    <footer class="text-center py-2 mt-6 text-secondary">
-                        <p class="mb-0">Copyright © {{ now()->year }} Phish Block Monitoring System. SLSU phishing monitoring and response platform.</p>
-                    </footer>
-                </div>
-            </div>
+            @include('layouts.footer')
         </div>
     </main>
 </body>
