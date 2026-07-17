@@ -24,9 +24,6 @@ os.makedirs(DATASET_DIR, exist_ok=True)
 
 # Environment variable names expected on Render
 ENV_FILE_IDS = {
-    "phishing_detector_model.pkl": "MODEL_FILE_ID",
-    "scaler.pkl": "SCALER_FILE_ID",
-    "feature_columns.pkl": "FEATURES_FILE_ID",
     "phishtank.csv": "PHISHTANK_FILE_ID",
 }
 
@@ -38,9 +35,7 @@ SUPABASE_LOGS_URL = (
 )
 
 # Globals for model/data
-rf_model = None
-scaler = None
-TRAIN_FEATURES = None
+ml_pipeline = None
 MODEL_META = None
 phishtank_urls = set()
 
@@ -96,17 +91,9 @@ def safe_load_joblib(path):
         traceback.print_exc()
         return None
 
-downloaded_model_path = os.path.join(DATASET_DIR, "phishing_detector_model.pkl")
-bundled_model_path = os.path.join(DATASET_DIR, "rf_model.joblib")
-model_path = (
-    downloaded_model_path
-    if os.path.exists(downloaded_model_path)
-    else bundled_model_path
+ml_pipeline = safe_load_joblib(
+    os.path.join(DATASET_DIR, "sklearn_pipeline.joblib")
 )
-
-rf_model = safe_load_joblib(model_path)
-scaler = safe_load_joblib(os.path.join(DATASET_DIR, "scaler.pkl"))
-TRAIN_FEATURES = safe_load_joblib(os.path.join(DATASET_DIR, "feature_columns.pkl"))
 
 try:
     with open(os.path.join(DATASET_DIR, "model_meta.json"), encoding="utf-8") as meta_file:
@@ -193,17 +180,12 @@ def extract_url_features(url, feature_names=None):
     }
 
     selected_features = feature_names
-    if selected_features is None and isinstance(TRAIN_FEATURES, (list, tuple)):
-        selected_features = TRAIN_FEATURES
     if selected_features is not None:
         return {str(col): feats.get(str(col), 0) for col in selected_features}
     return feats
 
 
-def predict_from_model_metadata(url):
-    if not MODEL_META:
-        return None
-
+def extract_pipeline_features(url):
     parsed = urlparse(url)
     host = parsed.netloc.split(":")[0].lower()
     parts = host.split(".")
@@ -220,7 +202,7 @@ def predict_from_model_metadata(url):
         for count in counts.values()
     ) if url else 0.0
 
-    values = {
+    return {
         "url_length": len(url),
         "domain_length": len(host),
         "path_length": len(parsed.path),
@@ -235,6 +217,13 @@ def predict_from_model_metadata(url):
         "count_percent_encoded": url.count("%"),
         "entropy": entropy,
     }
+
+
+def predict_from_model_metadata(url):
+    if not MODEL_META:
+        return None
+
+    values = extract_pipeline_features(url)
 
     names = MODEL_META.get("feature_names", [])
     means = MODEL_META.get("scaler_mean", [])
@@ -256,24 +245,20 @@ def predict_from_model_metadata(url):
 
 
 def predict_ml_probability(url):
-    try:
-        features_df = pd.DataFrame([extract_url_features(url)])
-        transformed = scaler.transform(features_df)
-        return float(rf_model.predict_proba(transformed)[0][1])
-    except Exception as scaled_error:
-        print(f"Scaled ML inference failed: {scaled_error}")
-
-    model_feature_names = getattr(rf_model, "feature_names_in_", None)
-    if model_feature_names is not None:
+    if ml_pipeline is not None:
         try:
-            model_df = pd.DataFrame([
-                extract_url_features(url, model_feature_names)
-            ])
-            return float(rf_model.predict_proba(model_df)[0][1])
-        except Exception as direct_error:
-            print(f"Direct ML inference failed: {direct_error}")
+            feature_names = MODEL_META.get("feature_names", []) if MODEL_META else []
+            features = extract_pipeline_features(url)
+            pipeline_df = pd.DataFrame(
+                [[features.get(name, 0.0) for name in feature_names]],
+                columns=feature_names,
+            )
+            return float(ml_pipeline.predict_proba(pipeline_df)[0][1]), "pipeline"
+        except Exception as pipeline_error:
+            print(f"Pipeline ML inference failed: {pipeline_error}")
 
-    return predict_from_model_metadata(url)
+    fallback_score = predict_from_model_metadata(url)
+    return fallback_score, "metadata_fallback"
 
 # ===============================
 # Pattern-based detection (softer)
@@ -315,11 +300,12 @@ def hybrid_check(url, api_key=GOOGLE_API_KEY):
     api_flag = check_with_google_safebrowsing(url, api_key) if api_key else False
 
     try:
-        ml_proba = predict_ml_probability(url)
+        ml_proba, ml_engine = predict_ml_probability(url)
     except Exception as e:
         print("❌ ML inference error:", e)
         traceback.print_exc()
         ml_proba = None
+        ml_engine = "unavailable"
 
     pattern_flags = pattern_based_check(url)
     num_pattern_flags = sum(pattern_flags.values())
@@ -387,6 +373,7 @@ def hybrid_check(url, api_key=GOOGLE_API_KEY):
     return {
         "url": url,
         "score": float(ml_proba) if ml_proba is not None else None,
+        "ml_engine": ml_engine,
         "risk_level": risk_level,
         "status": status,
         "reason": " | ".join(reason_list) if reason_list else "No strong signals"
@@ -455,24 +442,21 @@ def save_phishing_log(log: PhishingLog) -> None:
 def home():
     return {
         "message": "🛡️ Phishing Detection API is running!",
-        "model_loaded": rf_model is not None,
-        "scaler_loaded": scaler is not None,
-        "features_loaded": TRAIN_FEATURES is not None,
+        "pipeline_loaded": ml_pipeline is not None,
+        "metadata_fallback_loaded": MODEL_META is not None,
         "phishtank_loaded": len(phishtank_urls) > 0,
         "supabase_configured": bool(SUPABASE_LOGS_URL and SUPABASE_KEY),
     }
 
 @app.get("/check_url")
 def check_url(url: str = Query(...)):
-    # Fail fast if model missing
-    if rf_model is None or scaler is None or TRAIN_FEATURES is None:
+    if ml_pipeline is None and MODEL_META is None:
         return JSONResponse(
             status_code=500,
             content={
-                "error": "Model or artifacts not loaded on server. Check logs.",
-                "model_loaded": rf_model is not None,
-                "scaler_loaded": scaler is not None,
-                "features_loaded": TRAIN_FEATURES is not None
+                "error": "ML pipeline and metadata fallback are unavailable.",
+                "pipeline_loaded": ml_pipeline is not None,
+                "metadata_fallback_loaded": MODEL_META is not None,
             }
         )
 
@@ -493,11 +477,10 @@ def create_log(log: PhishingLog):
 
 @app.get("/health")
 def health():
-    ok = rf_model is not None and scaler is not None and TRAIN_FEATURES is not None
+    ok = ml_pipeline is not None
     return {
         "healthy": ok,
-        "model_loaded": rf_model is not None,
-        "scaler_loaded": scaler is not None,
-        "features_loaded": TRAIN_FEATURES is not None,
+        "pipeline_loaded": ml_pipeline is not None,
+        "metadata_fallback_loaded": MODEL_META is not None,
         "supabase_configured": bool(SUPABASE_LOGS_URL and SUPABASE_KEY),
     }
