@@ -18,8 +18,8 @@ const campusCodeReady = fetch(chrome.runtime.getURL("config.json"))
     return deviceConfig;
   });
 
-const API_BASE = "https://phishing-api-uijh.onrender.com/check_url?url=";
-const LOG_API = "https://phishing-api-uijh.onrender.com/logs";
+const API_BASE = "https://phish-blocker-monitoring-system.onrender.com/check_url?url=";
+const LOG_API = "https://phish-blocker-monitoring-system.onrender.com/logs";
 
 async function logToDatabase(result) {
   if (!result) return;

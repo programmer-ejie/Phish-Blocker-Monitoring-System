@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const RESULT_STORE_KEY = "phishResultsByUrl";
   const urlEl = document.getElementById("url");
   const statusEl = document.getElementById("status");
+  const scoreEl = document.getElementById("score");
   const detailsEl = document.getElementById("details");
   const recheckBtn = document.getElementById("recheck");
 
@@ -15,13 +16,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderResult(result) {
     if (result) {
-      statusEl.textContent = result.status || result.decision || result.risk_level || "Unknown";
-      detailsEl.textContent = `Score: ${result.score ?? "N/A"} - Reason: ${result.reason ?? JSON.stringify(result.flags) ?? ""}`;
+      const risk = String(result.risk_level || "Unknown");
+      const riskKey = risk.toLowerCase();
+      statusEl.className = `status ${riskKey === "high" || riskKey === "critical" ? "high" : riskKey === "medium" ? "medium" : "safe"}`;
+      statusEl.textContent = risk === "Unknown" ? "Assessment available" : `${risk} risk`;
+      scoreEl.textContent = result.score == null ? "Score unavailable" : `Score ${Number(result.score).toFixed(3)}`;
+      detailsEl.textContent = result.reason || "No suspicious indicators were reported.";
       return;
     }
 
+    statusEl.className = "status";
     statusEl.textContent = "Not checked yet";
-    detailsEl.textContent = "";
+    scoreEl.textContent = "";
+    detailsEl.textContent = "Run a security check to assess this destination.";
   }
 
   const activeTab = await getActiveTab();
@@ -36,16 +43,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   recheckBtn.addEventListener("click", () => {
+    recheckBtn.disabled = true;
+    recheckBtn.textContent = "Checking destination...";
     chrome.runtime.sendMessage({ action: "recheck_url", url: activeUrl, tabId: activeTabId }, (resp) => {
       if (chrome.runtime.lastError) {
         statusEl.textContent = "Re-check failed";
         detailsEl.textContent = chrome.runtime.lastError.message;
+        recheckBtn.disabled = false;
+        recheckBtn.textContent = "Run security check";
         return;
       }
 
       if (!resp?.ok) {
         statusEl.textContent = "Re-check failed";
         detailsEl.textContent = resp?.error || "Unknown error";
+        recheckBtn.disabled = false;
+        recheckBtn.textContent = "Run security check";
         return;
       }
 
@@ -53,6 +66,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         chrome.storage.local.get([RESULT_STORE_KEY], (data) => {
           const result = data[RESULT_STORE_KEY]?.[activeUrl];
           renderResult(result);
+          recheckBtn.disabled = false;
+          recheckBtn.textContent = "Run security check";
         });
       }, 500);
     });

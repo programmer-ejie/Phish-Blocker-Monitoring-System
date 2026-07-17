@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "PhishBlock (preload)",
-  "version": "1.0",
-  "description": "Preloads a blocking overlay and checks page URL with your phishing API.",
+  "name": "PhishBlock",
+  "version": "1.1",
+  "description": "Real-time phishing risk detection and campus endpoint monitoring.",
   "permissions": ["scripting", "activeTab", "storage"],
   "host_permissions": [
-    "https://phishing-api-uijh.onrender.com/*",
+    "https://phish-blocker-monitoring-system.onrender.com/*",
     "<all_urls>"
   ],
   "background": {

@@ -5,12 +5,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, Literal
 import joblib
 import pandas as pd
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 import os
 import requests
 import gdown
 import traceback
 import time
+import json
+import math
 
 load_dotenv()
 
@@ -39,6 +41,7 @@ SUPABASE_LOGS_URL = (
 rf_model = None
 scaler = None
 TRAIN_FEATURES = None
+MODEL_META = None
 phishtank_urls = set()
 
 # ===============================
@@ -105,6 +108,12 @@ rf_model = safe_load_joblib(model_path)
 scaler = safe_load_joblib(os.path.join(DATASET_DIR, "scaler.pkl"))
 TRAIN_FEATURES = safe_load_joblib(os.path.join(DATASET_DIR, "feature_columns.pkl"))
 
+try:
+    with open(os.path.join(DATASET_DIR, "model_meta.json"), encoding="utf-8") as meta_file:
+        MODEL_META = json.load(meta_file)
+except (OSError, ValueError) as exc:
+    print(f"Could not load model metadata fallback: {exc}")
+
 # ===============================
 # Load PhishTank
 # ===============================
@@ -155,28 +164,116 @@ def check_with_google_safebrowsing(url, api_key=GOOGLE_API_KEY):
 # ===============================
 # Feature extraction
 # ===============================
-def extract_url_features(url):
+def extract_url_features(url, feature_names=None):
     parsed = urlparse(url)
-    domain = parsed.netloc
+    domain = parsed.netloc.split(":")[0]
     path = parsed.path
+    path_parts = [part for part in path.split("/") if part]
 
     feats = {
         "UrlLength": len(url),
         "HostnameLength": len(domain),
         "NumDots": url.count("."),
+        "SubdomainLevel": max(domain.count(".") - 1, 0),
+        "PathLevel": len(path_parts),
         "NumDash": url.count("-"),
+        "NumDashInHostname": domain.count("-"),
         "NumNumericChars": sum(c.isdigit() for c in url),
         "NoHttps": int(not url.lower().startswith("https")),
         "AtSymbol": int("@" in url),
+        "TildeSymbol": int("~" in url),
+        "NumUnderscore": url.count("_"),
+        "NumPercent": url.count("%"),
+        "NumQueryComponents": len(parse_qs(parsed.query)),
+        "NumAmpersand": url.count("&"),
+        "NumHash": url.count("#"),
         "DoubleSlashInPath": int("//" in path),
         "SuspiciousSubdomain": int(domain.count(".") > 2),
         "ContainsBrand": int(any(b in url.lower() for b in ["paypal", "bank", "amazon"])),
     }
 
-    if isinstance(TRAIN_FEATURES, (list, tuple)):
-        return {col: feats.get(col, 0) for col in TRAIN_FEATURES}
-    else:
-        return feats
+    selected_features = feature_names
+    if selected_features is None and isinstance(TRAIN_FEATURES, (list, tuple)):
+        selected_features = TRAIN_FEATURES
+    if selected_features is not None:
+        return {str(col): feats.get(str(col), 0) for col in selected_features}
+    return feats
+
+
+def predict_from_model_metadata(url):
+    if not MODEL_META:
+        return None
+
+    parsed = urlparse(url)
+    host = parsed.netloc.split(":")[0].lower()
+    parts = host.split(".")
+    is_ip = len(parts) == 4 and all(
+        part.isdigit() and 0 <= int(part) <= 255 for part in parts
+    )
+    shorteners = {"bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd"}
+
+    counts = {}
+    for char in url:
+        counts[char] = counts.get(char, 0) + 1
+    entropy = -sum(
+        (count / len(url)) * math.log2(count / len(url))
+        for count in counts.values()
+    ) if url else 0.0
+
+    values = {
+        "url_length": len(url),
+        "domain_length": len(host),
+        "path_length": len(parsed.path),
+        "count_dots": url.count("."),
+        "count_hyphen": url.count("-"),
+        "count_at": url.count("@"),
+        "num_query_params": len(parse_qs(parsed.query)),
+        "has_https": int(parsed.scheme.lower() == "https"),
+        "has_ip": int(is_ip),
+        "subdomain_depth": max(host.count(".") - 1, 0),
+        "has_shortener": int(host in shorteners),
+        "count_percent_encoded": url.count("%"),
+        "entropy": entropy,
+    }
+
+    names = MODEL_META.get("feature_names", [])
+    means = MODEL_META.get("scaler_mean", [])
+    scales = MODEL_META.get("scaler_scale", [])
+    coefficients = MODEL_META.get("coef", [])
+    if not (len(names) == len(means) == len(scales) == len(coefficients)):
+        return None
+
+    scaled = [
+        (values.get(name, 0.0) - mean) / (scale or 1.0)
+        for name, mean, scale in zip(names, means, scales)
+    ]
+    linear_score = float(MODEL_META.get("intercept", 0.0)) + sum(
+        coefficient * value
+        for coefficient, value in zip(coefficients, scaled)
+    )
+    bounded_score = max(min(linear_score, 700), -700)
+    return 1.0 / (1.0 + math.exp(-bounded_score))
+
+
+def predict_ml_probability(url):
+    try:
+        features_df = pd.DataFrame([extract_url_features(url)])
+        transformed = scaler.transform(features_df)
+        return float(rf_model.predict_proba(transformed)[0][1])
+    except Exception as scaled_error:
+        print(f"Scaled ML inference failed: {scaled_error}")
+
+    model_feature_names = getattr(rf_model, "feature_names_in_", None)
+    if model_feature_names is not None:
+        try:
+            model_df = pd.DataFrame([
+                extract_url_features(url, model_feature_names)
+            ])
+            return float(rf_model.predict_proba(model_df)[0][1])
+        except Exception as direct_error:
+            print(f"Direct ML inference failed: {direct_error}")
+
+    return predict_from_model_metadata(url)
 
 # ===============================
 # Pattern-based detection (softer)
@@ -217,11 +314,8 @@ def hybrid_check(url, api_key=GOOGLE_API_KEY):
     phishtank_flag = url in phishtank_urls
     api_flag = check_with_google_safebrowsing(url, api_key) if api_key else False
 
-    feats = extract_url_features(url)
-    features_df = pd.DataFrame([feats])
     try:
-        X_scaled = scaler.transform(features_df)
-        ml_proba = rf_model.predict_proba(X_scaled)[0][1]
+        ml_proba = predict_ml_probability(url)
     except Exception as e:
         print("❌ ML inference error:", e)
         traceback.print_exc()
