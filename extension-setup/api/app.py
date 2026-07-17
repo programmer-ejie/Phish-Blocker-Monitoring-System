@@ -1,5 +1,8 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Any, Literal
 import joblib
 import pandas as pd
 from urllib.parse import urlparse
@@ -8,6 +11,8 @@ import requests
 import gdown
 import traceback
 import time
+
+load_dotenv()
 
 # ===============================
 # Config
@@ -24,6 +29,11 @@ ENV_FILE_IDS = {
 }
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", None)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+SUPABASE_LOGS_URL = (
+    f"{SUPABASE_URL}/rest/v1/phishing_logs" if SUPABASE_URL else ""
+)
 
 # Globals for model/data
 rf_model = None
@@ -285,6 +295,60 @@ def hybrid_check(url, api_key=GOOGLE_API_KEY):
 # ===============================
 app = FastAPI(title="Phishing Detection API")
 
+
+class PhishingLog(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    url: str = Field(min_length=1, max_length=4096)
+    score: float | None = Field(default=None, ge=0, le=1)
+    risk_level: Literal["Safe", "Low", "Medium", "High", "Critical"]
+    status: str = Field(min_length=1, max_length=50)
+    reason: str | None = None
+    computer_number: int | None = Field(default=None, gt=0)
+    campus_name: str | None = Field(default=None, max_length=100)
+    action: str | None = Field(default=None, max_length=50)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+def save_phishing_log(log: PhishingLog) -> None:
+    if not SUPABASE_LOGS_URL or not SUPABASE_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase logging is not configured on the server.",
+        )
+
+    payload = log.model_dump(exclude_none=True)
+    if "action" not in payload:
+        payload["action"] = (
+            "Blocked" if log.risk_level in {"High", "Critical"} else "Allowed"
+        )
+
+    try:
+        response = requests.post(
+            SUPABASE_LOGS_URL,
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+            },
+            json=payload,
+            timeout=10,
+        )
+    except requests.RequestException as exc:
+        print(f"Supabase logging request failed: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the monitoring database.",
+        ) from exc
+
+    if response.status_code not in {200, 201, 204}:
+        print(f"Supabase logging failed with HTTP {response.status_code}")
+        raise HTTPException(
+            status_code=502,
+            detail="The monitoring database rejected the log.",
+        )
+
 @app.get("/")
 def home():
     return {
@@ -292,7 +356,8 @@ def home():
         "model_loaded": rf_model is not None,
         "scaler_loaded": scaler is not None,
         "features_loaded": TRAIN_FEATURES is not None,
-        "phishtank_loaded": len(phishtank_urls) > 0
+        "phishtank_loaded": len(phishtank_urls) > 0,
+        "supabase_configured": bool(SUPABASE_LOGS_URL and SUPABASE_KEY),
     }
 
 @app.get("/check_url")
@@ -318,7 +383,16 @@ def check_url(url: str = Query(...)):
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": "Hybrid check failed", "detail": str(e)})
 
+
+@app.post("/logs", status_code=201)
+def create_log(log: PhishingLog):
+    save_phishing_log(log)
+    return {"logged": True}
+
 @app.get("/health")
 def health():
     ok = rf_model is not None and scaler is not None and TRAIN_FEATURES is not None
-    return {"healthy": ok}
+    return {
+        "healthy": ok,
+        "supabase_configured": bool(SUPABASE_LOGS_URL and SUPABASE_KEY),
+    }

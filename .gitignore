@@ -1,5 +1,6 @@
 *.log
 .DS_Store
+db_query_create.txt
 .env
 .env.backup
 .env.production

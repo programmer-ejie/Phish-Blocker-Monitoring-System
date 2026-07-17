@@ -19,9 +19,9 @@ const campusCodeReady = fetch(chrome.runtime.getURL("config.json"))
   });
 
 const API_BASE = "https://phishing-api-uijh.onrender.com/check_url?url=";
-const LOG_API = "http://localhost/xampp/PhishBlock-v1/logs.php";
+const LOG_API = "https://phishing-api-uijh.onrender.com/logs";
 
-async function logToLocalDB(result) {
+async function logToDatabase(result) {
   if (!result) return;
   await campusCodeReady;
   if (deviceConfig.computer_number == null && !deviceConfig.campus_name) {
@@ -39,7 +39,11 @@ async function logToLocalDB(result) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
-  }).catch(err => console.warn("Local DB log failed:", err));
+  }).then(response => {
+    if (!response.ok) {
+      throw new Error(`Logging API returned HTTP ${response.status}`);
+    }
+  }).catch(err => console.warn("Supabase log failed:", err));
 }
 
 function fetchWithTimeout(url, opts = {}, timeout = 8000) {
@@ -102,7 +106,7 @@ function processPhishCheck(msg, sender, sendResponse) {
 
         const json = await resp.json().catch(() => null);
 
-        void logToLocalDB(json);
+        void logToDatabase(json);
 
         sendResponse({ ok: true, json });
       })

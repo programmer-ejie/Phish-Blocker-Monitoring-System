@@ -6,3 +6,4 @@ scikit-learn==1.5.1
 gdown==5.2.0
 requests==2.32.3
 python-multipart==0.0.9
+python-dotenv==1.0.1
