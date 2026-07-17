@@ -93,7 +93,15 @@ def safe_load_joblib(path):
         traceback.print_exc()
         return None
 
-rf_model = safe_load_joblib(os.path.join(DATASET_DIR, "phishing_detector_model.pkl"))
+downloaded_model_path = os.path.join(DATASET_DIR, "phishing_detector_model.pkl")
+bundled_model_path = os.path.join(DATASET_DIR, "rf_model.joblib")
+model_path = (
+    downloaded_model_path
+    if os.path.exists(downloaded_model_path)
+    else bundled_model_path
+)
+
+rf_model = safe_load_joblib(model_path)
 scaler = safe_load_joblib(os.path.join(DATASET_DIR, "scaler.pkl"))
 TRAIN_FEATURES = safe_load_joblib(os.path.join(DATASET_DIR, "feature_columns.pkl"))
 
@@ -394,5 +402,8 @@ def health():
     ok = rf_model is not None and scaler is not None and TRAIN_FEATURES is not None
     return {
         "healthy": ok,
+        "model_loaded": rf_model is not None,
+        "scaler_loaded": scaler is not None,
+        "features_loaded": TRAIN_FEATURES is not None,
         "supabase_configured": bool(SUPABASE_LOGS_URL and SUPABASE_KEY),
     }
