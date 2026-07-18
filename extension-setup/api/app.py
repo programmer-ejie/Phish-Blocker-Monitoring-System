@@ -472,9 +472,4 @@ def create_log(log: PhishingLog):
 @app.get("/health")
 def health():
     ok = ml_pipeline is not None
-    return {
-        "healthy": ok,
-        "pipeline_loaded": ml_pipeline is not None,
-        "metadata_fallback_loaded": MODEL_META is not None,
-        "supabase_configured": bool(SUPABASE_LOGS_URL and SUPABASE_KEY),
-    }
+    return {"healthy": ok}
