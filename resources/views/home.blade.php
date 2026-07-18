@@ -208,7 +208,7 @@
                 <div class="row">
                     <div class="col-md-4 mb-4">
                         <div class="card overflow-hidden shadow h-100">
-                            <img class="module-preview-image" data-theme-image src="{{ asset('images/landing_page/light-dashboard.webp') }}" data-light-src="{{ asset('images/landing_page/light-dashboard.webp') }}" data-dark-src="{{ asset('images/landing_page/dark-dashboard.webp') }}" alt="Phish Block dashboard preview">
+                            <img class="module-preview-image" data-theme-image src="{{ asset('images/landing_page/dark-dashboard.webp') }}" data-light-src="{{ asset('images/landing_page/dark-dashboard.webp') }}" data-dark-src="{{ asset('images/landing_page/light-dashboard.webp') }}" alt="Phish Block dashboard preview">
                             <div class="card-body py-4 px-3">
                                 <div class="d-flex flex-column flex-lg-row justify-content-between mb-3">
                                     <h4 class="text-secondary fw-medium">Dashboard</h4><span class="fs-1 fw-medium">{{ number_format($summary['total_scans']) }}</span>
