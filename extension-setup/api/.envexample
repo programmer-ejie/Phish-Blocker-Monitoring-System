@@ -1,3 +1,8 @@
+# Paths resolve from the API directory, regardless of the working directory.
+MODEL_PATH=dataset/phishing_url_bundle.joblib
+PHISHTANK_PATH=dataset/phishtank.csv
+# Optional integrations. Set real values in Render's environment settings.
 SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_KEY=your-publishable-key
-GOOGLE_API_KEY=your_google_safe_browsing_api_key
+SUPABASE_KEY=your-server-side-supabase-key
+GOOGLE_API_KEY=
+PHISHTANK_FILE_ID=
