@@ -43,6 +43,9 @@
     padding: "16px",
     transition: "opacity 0.4s ease-in-out"
   });
+  // Run reputation checks silently while the page loads. Only reveal the
+  // overlay if the API returns a high-risk result.
+  overlay.style.display = "none";
   overlay.innerHTML = `
     <div style="width:min(430px,calc(100vw - 40px)); padding:34px; border:1px solid #203b57; border-radius:22px; background:linear-gradient(145deg,#0b1929,#0e2236); box-shadow:0 30px 80px rgba(0,0,0,.45);">
       <div style="display:flex; align-items:center; gap:14px; margin-bottom:26px; text-align:left;">
@@ -116,6 +119,7 @@
   }
 
   function showBlockedOverlay(result, currentOverlay, reason, score) {
+    currentOverlay.style.display = "flex";
     currentOverlay.innerHTML = `
       <div style="width:min(560px,calc(100vw - 40px));background:linear-gradient(145deg,#17141d,#21151c);border:1px solid #74333d;border-radius:24px;padding:34px;box-shadow:0 35px 90px rgba(0,0,0,.58);text-align:left;color:#f7edf0;">
         <div style="display:flex;align-items:flex-start;gap:16px;">

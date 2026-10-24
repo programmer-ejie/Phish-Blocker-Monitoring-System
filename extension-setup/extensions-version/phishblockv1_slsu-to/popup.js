@@ -6,70 +6,73 @@ document.addEventListener("DOMContentLoaded", async () => {
   const detailsEl = document.getElementById("details");
   const recheckBtn = document.getElementById("recheck");
 
-  function getActiveTab() {
-    return new Promise((resolve) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        resolve(tabs[0] || null);
-      });
-    });
-  }
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const activeUrl = activeTab?.url || "";
+  urlEl.textContent = activeUrl || "This page cannot be checked.";
 
   function renderResult(result) {
-    if (result) {
-      const risk = String(result.risk_level || "Unknown");
-      const riskKey = risk.toLowerCase();
-      statusEl.className = `status ${riskKey === "high" || riskKey === "critical" ? "high" : riskKey === "medium" ? "medium" : "safe"}`;
-      statusEl.textContent = risk === "Unknown" ? "Assessment available" : `${risk} risk`;
-      scoreEl.textContent = result.score == null ? "Score unavailable" : `Score ${Number(result.score).toFixed(3)}`;
-      detailsEl.textContent = result.reason || "No suspicious indicators were reported.";
+    if (!result) {
+      statusEl.className = "status";
+      statusEl.textContent = "Checking in background";
+      scoreEl.textContent = "";
+      detailsEl.textContent = "PhishBlock scans pages quietly. Select Run security check to check this page now.";
       return;
     }
 
-    statusEl.className = "status";
-    statusEl.textContent = "Not checked yet";
-    scoreEl.textContent = "";
-    detailsEl.textContent = "Run a security check to assess this destination.";
+    const risk = String(result.risk_level || "Unknown");
+    const riskKey = risk.toLowerCase();
+    statusEl.className = `status ${riskKey === "high" || riskKey === "critical" ? "high" : riskKey === "medium" ? "medium" : "safe"}`;
+    statusEl.textContent = risk === "Unknown" ? "Assessment available" : `${risk} risk`;
+
+    const score = Number(result.score);
+    scoreEl.textContent = Number.isFinite(score)
+      ? `Phishing probability ${Math.round(Math.max(0, Math.min(1, score)) * 100)}%`
+      : "Prediction percentage unavailable";
+    detailsEl.textContent = result.reason || "No suspicious indicators were reported.";
   }
 
-  const activeTab = await getActiveTab();
-  const activeUrl = activeTab?.url || "";
-  const activeTabId = activeTab?.id ?? null;
+  function saveResult(result) {
+    chrome.storage.local.get([RESULT_STORE_KEY], (data) => {
+      const results = data[RESULT_STORE_KEY] || {};
+      results[activeUrl] = result;
+      chrome.storage.local.set({ [RESULT_STORE_KEY]: results, lastPhishResult: result });
+    });
+  }
 
-  urlEl.textContent = activeUrl;
+  function runCheck() {
+    if (!activeUrl || !/^https?:/i.test(activeUrl)) {
+      statusEl.className = "status";
+      statusEl.textContent = "Page unavailable";
+      detailsEl.textContent = "Open a regular website to run a security check.";
+      return;
+    }
+
+    recheckBtn.disabled = true;
+    recheckBtn.textContent = "Checking destination...";
+    statusEl.className = "status";
+    statusEl.textContent = "Checking";
+    detailsEl.textContent = "Analyzing reputation and URL patterns in the background.";
+
+    chrome.runtime.sendMessage({ action: "checkPhish", url: activeUrl }, (resp) => {
+      if (chrome.runtime.lastError || !resp?.ok) {
+        statusEl.className = "status high";
+        statusEl.textContent = "Check unavailable";
+        detailsEl.textContent = resp?.error || chrome.runtime.lastError?.message || "The detection service did not respond.";
+      } else {
+        const result = resp.json ?? resp.data ?? resp;
+        saveResult(result);
+        renderResult(result);
+      }
+      recheckBtn.disabled = false;
+      recheckBtn.textContent = "Run security check";
+    });
+  }
 
   chrome.storage.local.get([RESULT_STORE_KEY], (data) => {
     const result = data[RESULT_STORE_KEY]?.[activeUrl];
     renderResult(result);
+    if (!result && /^https?:/i.test(activeUrl)) runCheck();
   });
 
-  recheckBtn.addEventListener("click", () => {
-    recheckBtn.disabled = true;
-    recheckBtn.textContent = "Checking destination...";
-    chrome.runtime.sendMessage({ action: "recheck_url", url: activeUrl, tabId: activeTabId }, (resp) => {
-      if (chrome.runtime.lastError) {
-        statusEl.textContent = "Re-check failed";
-        detailsEl.textContent = chrome.runtime.lastError.message;
-        recheckBtn.disabled = false;
-        recheckBtn.textContent = "Run security check";
-        return;
-      }
-
-      if (!resp?.ok) {
-        statusEl.textContent = "Re-check failed";
-        detailsEl.textContent = resp?.error || "Unknown error";
-        recheckBtn.disabled = false;
-        recheckBtn.textContent = "Run security check";
-        return;
-      }
-
-      setTimeout(() => {
-        chrome.storage.local.get([RESULT_STORE_KEY], (data) => {
-          const result = data[RESULT_STORE_KEY]?.[activeUrl];
-          renderResult(result);
-          recheckBtn.disabled = false;
-          recheckBtn.textContent = "Run security check";
-        });
-      }, 500);
-    });
-  });
+  recheckBtn.addEventListener("click", runCheck);
 });
