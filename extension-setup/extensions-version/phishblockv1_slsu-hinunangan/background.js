@@ -1,16 +1,23 @@
+const DEFAULT_PREDICTION_API = "https://phish-blocker-monitoring-system-8f1o.onrender.com/check_url?url=";
 let deviceConfig = {
   computer_number: null,
-  campus_name: null
+  campus_name: null,
+  prediction_api_url: DEFAULT_PREDICTION_API,
+  logging_api_url: ""
 };
 
 const campusCodeReady = fetch(chrome.runtime.getURL("config.json"))
-  .then(r => r.json())
+  .then(r => {
+    if (!r.ok) throw new Error("Could not load extension configuration");
+    return r.json();
+  })
   .then(cfg => {
     deviceConfig = {
       computer_number: cfg.computer_number ?? null,
-      campus_name: cfg.campus_name ?? null
+      campus_name: cfg.campus_name ?? null,
+      prediction_api_url: cfg.prediction_api_url || DEFAULT_PREDICTION_API,
+      logging_api_url: cfg.logging_api_url || ""
     };
-    console.log("Loaded device config:", deviceConfig);
     return deviceConfig;
   })
   .catch(err => {
@@ -18,32 +25,40 @@ const campusCodeReady = fetch(chrome.runtime.getURL("config.json"))
     return deviceConfig;
   });
 
-const API_BASE = "https://phishing-api-uijh.onrender.com/check_url?url=";
-const LOG_API = "https://phishing-api-uijh.onrender.com/logs";
-
 async function logToDatabase(result) {
   if (!result) return;
   await campusCodeReady;
-  if (deviceConfig.computer_number == null && !deviceConfig.campus_name) {
-    console.warn("Config not loaded yet, skipping log for now");
+  if (!deviceConfig.logging_api_url) {
+    console.warn("Logging is not configured: set logging_api_url in config.json to your Hostinger /api/phishing-logs endpoint.");
     return;
   }
-
+  if (deviceConfig.computer_number == null || !deviceConfig.campus_name) {
+    console.warn("Computer number and campus name are required for monitoring logs");
+    return;
+  }
   const payload = {
-    ...result,
+    url: result.url,
+    score: result.score,
+    risk_level: result.risk_level,
+    status: result.status,
+    reason: result.reason,
     computer_number: deviceConfig.computer_number,
-    campus_name: deviceConfig.campus_name
-  };
-
-  fetch(LOG_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  }).then(response => {
-    if (!response.ok) {
-      throw new Error(`Logging API returned HTTP ${response.status}`);
+    campus_name: deviceConfig.campus_name,
+    metadata: {
+      ml_engine: result.ml_engine,
+      model_threshold: result.model_threshold
     }
-  }).catch(err => console.warn("Supabase log failed:", err));
+  };
+  try {
+    const response = await fetchWithTimeout(deviceConfig.logging_api_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(payload)
+    }, 12000);
+    if (!response.ok) throw new Error(`Logging endpoint returned HTTP ${response.status}`);
+  } catch (err) {
+    console.warn("Hostinger logging failed:", err);
+  }
 }
 
 function fetchWithTimeout(url, opts = {}, timeout = 8000) {
@@ -94,9 +109,8 @@ function processPhishCheck(msg, sender, sendResponse) {
     }
 
     const target = msg.url;
-    const apiUrl = API_BASE + encodeURIComponent(target);
-
-    fetchWithTimeout(apiUrl, { method: "GET" }, 9000)
+    campusCodeReady
+      .then(() => fetchWithTimeout(deviceConfig.prediction_api_url + encodeURIComponent(target), { method: "GET" }, 9000))
       .then(async resp => {
         if (!resp.ok) {
           const text = await resp.text().catch(() => "");

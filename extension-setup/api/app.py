@@ -1,7 +1,6 @@
 """Render-ready phishing detection API using the retrained URL-text bundle."""
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Literal
 from urllib.parse import urlsplit
 import csv
 import importlib.metadata
@@ -16,7 +15,6 @@ import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
 from phishing_url_utils import normalize_url, predict_urls
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -30,9 +28,6 @@ def configured_path(name, default):
 MODEL_PATH = configured_path('MODEL_PATH', 'dataset/phishing_url_bundle.joblib')
 PHISHTANK_PATH = configured_path('PHISHTANK_PATH', 'dataset/phishtank.csv')
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-SUPABASE_URL = os.getenv('SUPABASE_URL', '').rstrip('/')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
-SUPABASE_LOGS_URL = f'{SUPABASE_URL}/rest/v1/phishing_logs' if SUPABASE_URL else ''
 model_bundle = None
 phishtank_urls = set()
 
@@ -178,53 +173,6 @@ def hybrid_check(url, api_key=None):
             'reason': ' | '.join(reasons)}
 
 
-class PhishingLog(BaseModel):
-    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
-
-    url: str = Field(min_length=1, max_length=4096)
-    score: float | None = Field(default=None, ge=0, le=1)
-    risk_level: Literal["Safe", "Low", "Medium", "High", "Critical"]
-    status: str = Field(min_length=1, max_length=50)
-    reason: str | None = None
-    computer_number: int | None = Field(default=None, gt=0)
-    campus_name: str | None = Field(default=None, max_length=100)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-def save_phishing_log(log: PhishingLog) -> None:
-    if not SUPABASE_LOGS_URL or not SUPABASE_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail="Supabase logging is not configured on the server.",
-        )
-
-    payload = log.model_dump(exclude_none=True)
-    try:
-        response = requests.post(
-            SUPABASE_LOGS_URL,
-            headers={
-                "apikey": SUPABASE_KEY,
-                "Authorization": f"Bearer {SUPABASE_KEY}",
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal",
-            },
-            json=payload,
-            timeout=10,
-        )
-    except requests.RequestException as exc:
-        logger.warning("Supabase logging request failed")
-        raise HTTPException(
-            status_code=502,
-            detail="Could not reach the monitoring database.",
-        ) from exc
-
-    if response.status_code not in {200, 201, 204}:
-        print(f"Supabase logging failed with HTTP {response.status_code}")
-        raise HTTPException(
-            status_code=502,
-            detail="The monitoring database rejected the log.",
-        )
-
 @app.get('/')
 def home():
     return {'message': 'Phishing Detection API is running',
@@ -233,7 +181,7 @@ def home():
             'metadata_fallback_loaded': False,
             'model_threshold': float(model_bundle['threshold']) if model_bundle else None,
             'phishtank_loaded': bool(phishtank_urls),
-            'supabase_configured': bool(SUPABASE_LOGS_URL and SUPABASE_KEY)}
+            'logging_backend': 'hostinger-laravel'}
 
 
 @app.get('/check_url')
@@ -245,12 +193,6 @@ def check_url(url: str = Query(..., min_length=1, max_length=16384)):
     except Exception:
         logger.exception('URL classification failed')
         raise HTTPException(status_code=503, detail='URL classification is temporarily unavailable.')
-
-
-@app.post('/logs', status_code=201)
-def create_log(log: PhishingLog):
-    save_phishing_log(log)
-    return {'logged': True}
 
 
 @app.get('/health')

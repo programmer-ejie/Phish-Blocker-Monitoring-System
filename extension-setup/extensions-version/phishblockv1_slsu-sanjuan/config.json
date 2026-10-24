@@ -1,4 +1,6 @@
 {
-    "computer_number":  1,
-    "campus_name":  "SLSU-SanJuan"
+  "computer_number": 1,
+  "campus_name": "SLSU-SanJuan",
+  "prediction_api_url": "https://phish-blocker-monitoring-system-8f1o.onrender.com/check_url?url=",
+  "logging_api_url": ""
 }

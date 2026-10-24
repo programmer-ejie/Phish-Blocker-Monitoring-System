@@ -5,7 +5,7 @@
   "description": "Real-time phishing risk detection and campus endpoint monitoring.",
   "permissions": ["scripting", "activeTab", "storage"],
   "host_permissions": [
-    "https://phishing-api-uijh.onrender.com/*",
+    "https://phish-blocker-monitoring-system-8f1o.onrender.com/*",
     "<all_urls>"
   ],
   "background": {

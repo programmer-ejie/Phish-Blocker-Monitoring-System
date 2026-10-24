@@ -34,9 +34,6 @@ Python 3.12 is specified in `.python-version`; the Blueprint pins 3.12.10.
 
 Set these environment variables as needed:
 
-- `SUPABASE_URL` and `SUPABASE_KEY`: required for `/logs`, optional for detection.
-  Use a server-only key with permission to insert into `phishing_logs`. Do not put
-  that key in the browser extension. Existing database policies still apply.
 - `GOOGLE_API_KEY`: optional Google Safe Browsing checks.
 - `PHISHTANK_FILE_ID`: optional public Google Drive CSV ID, downloaded at startup
   only when the local CSV is absent. Existing `dataset/phishtank.csv` is ignored
@@ -55,9 +52,9 @@ detection enabled. One worker avoids loading multiple copies of the model.
 2. Visit `/` and check `model_name` and `model_threshold`.
 3. Call `/check_url?url=https%3A%2F%2Fexample.com%2F`. Scores are predictions,
    not independently verified threat verdicts.
-4. Test `/logs` with your actual Supabase configuration.
-5. If the service URL changed, update `API_BASE` and `LOG_API` in each extension
-   version's `background.js`, and the relevant host permissions if needed.
+4. Configure `logging_api_url` in each extension config to your Hostinger website's `/api/phishing-logs` endpoint. Logging is handled by Laravel/MySQL, not Render.
+5. Set `prediction_api_url` in each extension's `config.json` to the Render
+   `/check_url?url=` address. Reload the extension after changing its configuration.
 
 `/check_url` preserves `url`, `score`, `ml_engine`, `risk_level`, `status`, and
 `reason`, adding `model_threshold`. Model scores at or above the saved threshold
@@ -81,3 +78,9 @@ API documentation. In a development environment install `httpx`, then run
 Render references: [FastAPI deployment](https://render.com/docs/deploy-fastapi),
 [Python version configuration](https://render.com/docs/python-version), and
 [Blueprint specification](https://render.com/docs/blueprint-spec).
+
+## Logging architecture
+
+Render only serves predictions. `/logs` and Supabase configuration have been removed.
+The extensions submit logs directly to the Laravel `/api/phishing-logs` endpoint.
+See `../HOSTINGER_SETUP.md` for MySQL deployment and all six extensions.

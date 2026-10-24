@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fastapi.testclient import TestClient
@@ -92,20 +92,9 @@ class ApiTests(unittest.TestCase):
         with patch.object(api, 'GOOGLE_API_KEY', 'test-key'), patch.object(api.requests, 'post', side_effect=api.requests.Timeout):
             self.assertEqual(self.client.get('/check_url', params={'url': 'https://example.com'}).status_code, 200)
 
-    def test_logging_schema_and_supabase_payload(self):
-        payload = {'url': 'https://example.com', 'score': 0.7, 'risk_level': 'High',
-                   'status': 'Block', 'computer_number': 1, 'campus_name': 'Test Campus',
-                   'metadata': {'ml_engine': 'phishing_url_bundle'}}
-        with patch.object(api, 'SUPABASE_LOGS_URL', 'https://database.invalid/rest/v1/phishing_logs'), patch.object(api, 'SUPABASE_KEY', 'test-key'), patch.object(api.requests, 'post', return_value=Mock(status_code=201)) as post:
-            response = self.client.post('/logs', json=payload)
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json(), {'logged': True})
-        self.assertEqual(post.call_args.kwargs['json']['metadata'], payload['metadata'])
-
-    def test_unconfigured_logging_is_explicit(self):
-        with patch.object(api, 'SUPABASE_LOGS_URL', ''):
-            response = self.client.post('/logs', json={'url': 'https://example.com', 'risk_level': 'Low', 'status': 'Proceed'})
-        self.assertEqual(response.status_code, 503)
+    def test_logging_is_not_handled_by_prediction_server(self):
+        self.assertEqual(self.client.post('/logs', json={}).status_code, 404)
+        self.assertEqual(self.client.get('/').json()['logging_backend'], 'hostinger-laravel')
 
 
 if __name__ == '__main__':
