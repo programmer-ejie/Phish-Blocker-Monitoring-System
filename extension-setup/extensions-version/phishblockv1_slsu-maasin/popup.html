@@ -15,7 +15,7 @@
     body { width: 360px; margin: 0; background: linear-gradient(145deg, #07111f 0%, #0b1728 100%); }
     .shell { padding: 18px; }
     .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; }
-    .brand-mark { width: 42px; height: 42px; display: block; border: 1px solid #21405e; border-radius: 12px; background: #10243a; box-shadow: 0 8px 20px rgba(0, 151, 219, .18); object-fit: cover; }
+    .brand-mark { width: 42px; height: 42px; display: block; flex-shrink: 0; object-fit: contain; }
     .brand h1 { margin: 0; font-size: 16px; letter-spacing: .01em; }
     .brand p { margin: 2px 0 0; color: #8193a8; font-size: 11px; }
     .card { padding: 15px; border: 1px solid #1b3047; border-radius: 16px; background: rgba(15, 31, 49, .88); box-shadow: 0 16px 35px rgba(0,0,0,.22); }
@@ -39,7 +39,7 @@
 <body>
   <main class="shell">
     <header class="brand">
-      <img class="brand-mark" src="icons/icon128.png" alt="PhishBlock logo" />
+      <img class="brand-mark" src="icons/phish-block-logo.png" alt="PhishBlock logo" />
       <div><h1>PhishBlock</h1><p>Real-time browsing protection</p></div>
     </header>
 

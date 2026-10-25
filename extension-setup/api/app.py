@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from phishing_url_utils import normalize_url, predict_urls, decision_thresholds
-from release_utils import strict_report_failures, file_hash
+from release_utils import strict_report_failures, source_hash_matches
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / '.env')
@@ -56,7 +56,7 @@ def load_model_bundle(path):
         block_threshold = decision_thresholds(bundle)[1]
         if block_threshold != proof.get('block_threshold') or (block_threshold is not None and proof.get('block_test_metrics') is None):
             raise RuntimeError('Blocking policy differs from its strict evaluation proof.')
-        if proof.get('helper_sha256') != file_hash(BASE_DIR/'phishing_url_utils.py'):
+        if not source_hash_matches(BASE_DIR/'phishing_url_utils.py', proof.get('helper_sha256')):
             raise RuntimeError('Inference helper differs from the evaluated strict release.')
     if list(bundle['pipeline'].classes_) != [0, 1]:
         raise RuntimeError('Expected model classes 0=benign and 1=phishing.')

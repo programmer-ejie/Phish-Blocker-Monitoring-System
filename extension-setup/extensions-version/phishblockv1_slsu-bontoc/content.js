@@ -2,6 +2,7 @@
 (() => {
   const OVERLAY_ID = "phishblock-overlay-v1";
   const RESULT_STORE_KEY = "phishResultsByUrl";
+  const BRAND_LOGO_URL = chrome.runtime.getURL("icons/phish-block-logo.png");
 
   // Avoid duplicate injection
   if (document.getElementById(OVERLAY_ID)) return;
@@ -47,7 +48,7 @@
   overlay.innerHTML = `
     <div style="width:min(430px,calc(100vw - 40px)); padding:34px; border:1px solid #203b57; border-radius:22px; background:linear-gradient(145deg,#0b1929,#0e2236); box-shadow:0 30px 80px rgba(0,0,0,.45);">
       <div style="display:flex; align-items:center; gap:14px; margin-bottom:26px; text-align:left;">
-        <div style="width:44px;height:44px;display:grid;place-items:center;border:1px solid #285171;border-radius:14px;background:#102c43;color:#5ac8ff;font-weight:800;">PB</div>
+        <img src="${BRAND_LOGO_URL}" alt="PhishBlock logo" width="44" height="44" style="width:44px;height:44px;object-fit:contain;flex-shrink:0;" />
         <div><div style="font-size:18px;font-weight:750;letter-spacing:.01em;">PhishBlock</div><div style="margin-top:3px;color:#7f96aa;font-size:12px;">Secure destination analysis</div></div>
       </div>
       <div style="display:flex; align-items:center; gap:16px; padding:18px; border:1px solid #1b354d; border-radius:16px; background:#091625; text-align:left;">

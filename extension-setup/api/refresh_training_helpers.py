@@ -49,7 +49,7 @@ for _name in ['host_text_urls', 'path_query_text_urls', 'dense_url_features', 'U
 for _name in ['select_block_threshold', 'blocking_failures', 'apply_training_reviews', 'validation_review_queue']:
     HELPER_EXPORTS[_name] = getattr(_training_helpers, _name)
 for _name in ['STRICT_QUALITY_POLICY', 'STRICT_BLOCK_POLICY', 'strict_report_failures',
-              'runtime_dependency_failures', 'build_release_package']:
+              'runtime_dependency_failures', 'build_release_package', 'source_hash']:
     HELPER_EXPORTS[_name] = getattr(_release_helpers, _name)
 HELPER_EXPORTS['resolve_active_experiment'] = _experiment_helpers.resolve_active_experiment
 globals().update(HELPER_EXPORTS)

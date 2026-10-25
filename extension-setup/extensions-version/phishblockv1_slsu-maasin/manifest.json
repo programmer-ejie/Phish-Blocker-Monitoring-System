@@ -3,7 +3,11 @@
   "name": "PhishBlock",
   "version": "1.1",
   "description": "Real-time phishing risk detection and campus endpoint monitoring.",
-  "permissions": ["scripting", "activeTab", "storage"],
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "storage"
+  ],
   "host_permissions": [
     "https://phish-blocker-monitoring-system-8f1o.onrender.com/*",
     "<all_urls>"
@@ -15,24 +19,44 @@
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start"
     }
   ],
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "web_accessible_resources": [{
-    "resources": ["config.json"],
-    "matches": ["<all_urls>"]
-  }]
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "config.json"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    },
+    {
+      "resources": [
+        "icons/phish-block-logo.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

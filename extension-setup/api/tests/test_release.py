@@ -12,7 +12,8 @@ from sklearn.dummy import DummyClassifier
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_utils import (STRICT_QUALITY_POLICY, MODEL_PACKAGES, build_release_package,
-                           file_hash, strict_report_failures, verify_release_package)
+                           file_hash, strict_report_failures, verify_release_package,
+                           source_hash, source_hash_matches, artifact_hash_matches)
 
 API = Path(__file__).resolve().parents[1]
 
@@ -30,6 +31,26 @@ def passing_report():
 
 
 class StrictReleaseTests(unittest.TestCase):
+    def test_crlf_training_proof_accepts_lf_checkout_but_not_code_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'helper.py'
+            path.write_bytes(b'def predict():\r\n    return 1\r\n')
+            legacy=file_hash(path)
+            normalized=source_hash(path)
+            path.write_bytes(b'def predict():\n    return 1\n')
+            self.assertTrue(source_hash_matches(path,legacy))
+            self.assertTrue(source_hash_matches(path,normalized))
+            path.write_bytes(b'def predict():\n    return 2\n')
+            self.assertFalse(source_hash_matches(path,legacy))
+            self.assertFalse(source_hash_matches(path,normalized))
+
+    def test_binary_hashes_never_normalize_line_endings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'model.joblib'
+            path.write_bytes(b'binary\r\nartifact');expected=file_hash(path)
+            path.write_bytes(b'binary\nartifact')
+            self.assertFalse(artifact_hash_matches(path,expected))
+
     def test_unresolved_source_labels_block_even_perfect_metrics(self):
         report=passing_report();report['source_provenance_verified']=False
         self.assertTrue(any('provenance' in item for item in strict_report_failures(report)))

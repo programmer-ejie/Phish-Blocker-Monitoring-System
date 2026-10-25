@@ -26,6 +26,37 @@ def file_hash(path):
     return digest.hexdigest()
 
 
+def source_hash(path):
+    """Hash source with Git/platform-independent LF line endings."""
+    return hashlib.sha256(Path(path).read_bytes().replace(b'\r\n', b'\n')).hexdigest()
+
+
+def source_hash_matches(path, expected):
+    """Also accept legacy proofs hashed before Git converted CRLF to LF.
+
+    Only the line-ending representation varies; source text, whitespace, and
+    comments must still match exactly. Binary artifact hashes stay byte-exact.
+    """
+    raw = Path(path).read_bytes()
+    lf = raw.replace(b'\r\n', b'\n')
+    return expected in {hashlib.sha256(value).hexdigest()
+                        for value in [raw, lf, lf.replace(b'\n', b'\r\n')]}
+
+
+def _is_text_release_file(path):
+    path = Path(path)
+    return path.suffix.lower() in {'.py', '.md', '.json', '.txt', '.yaml', '.yml'} or path.name in {
+        'Procfile', '.gitignore', '.python-version', '.envexample'}
+
+
+def artifact_hash(path):
+    return source_hash(path) if _is_text_release_file(path) else file_hash(path)
+
+
+def artifact_hash_matches(path, expected):
+    return source_hash_matches(path, expected) if _is_text_release_file(path) else file_hash(path) == expected
+
+
 def strict_report_failures(report):
     """Recompute fixed strict limits, independently of editable notebook settings."""
     failures = list(report.get('gate_failures', []))
@@ -81,7 +112,7 @@ def verify_release_package(directory):
         raise ValueError('Incomplete runtime package.')
     for name, expected in manifest['files'].items():
         path = (root/name).resolve()
-        if root not in path.parents or not path.is_file() or file_hash(path) != expected:
+        if root not in path.parents or not path.is_file() or not artifact_hash_matches(path, expected):
             raise ValueError('Release file missing or changed: '+name)
     if runtime_dependency_failures(root, manifest['report']['versions']):
         raise ValueError('Release runtime dependencies do not match training.')
@@ -106,7 +137,7 @@ def build_release_package(source, run_dir, candidate, report):
     failures = strict_report_failures(report)+runtime_dependency_failures(source, report['versions'])
     if failures:
         raise ValueError('Release blocked: '+'; '.join(failures))
-    if report.get('helper_sha256') != file_hash(source/'phishing_url_utils.py'):
+    if not source_hash_matches(source/'phishing_url_utils.py', report.get('helper_sha256')):
         raise ValueError('Inference helper differs from the evaluated training run.')
     destination = run_dir/'github_api_release'
     if destination.exists():
@@ -139,7 +170,7 @@ def build_release_package(source, run_dir, candidate, report):
             'The datasets are historical and this holdout has been inspected during development.\n'
             'Use recent independent data for final assurance. Scores are not calibrated probabilities.\n'
             'Warnings and automatic blocks use different thresholds; threat-list matches may also block.\n', encoding='utf-8')
-        files = {p.relative_to(temporary).as_posix(): file_hash(p)
+        files = {p.relative_to(temporary).as_posix(): artifact_hash(p)
                  for p in temporary.rglob('*') if p.is_file()}
         (temporary/'release_manifest.json').write_text(json.dumps(
             {'release_profile':'strict', 'files':files, 'report':report}, indent=2), encoding='utf-8')

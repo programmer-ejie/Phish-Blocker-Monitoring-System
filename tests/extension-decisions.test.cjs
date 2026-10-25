@@ -21,7 +21,7 @@ async function renderVerdict(variant, status, hostname='example.com') {
   const location={hostname,href:'https://'+hostname+'/',protocol:'https:'};
   const context=vm.createContext({document,location,window:{location},
     console:{log(){},warn(){}},setTimeout(){return 0;},
-    chrome:{runtime:{sendMessage:(message,callback)=>{calls++;callback({ok:true,json:result});},onMessage:{addListener(){}}},
+    chrome:{runtime:{getURL:name=>'chrome-extension://test/'+name,sendMessage:(message,callback)=>{calls++;callback({ok:true,json:result});},onMessage:{addListener(){}}},
       storage:{local:{get:(keys,callback)=>callback({}),set(){}}}},
   });
   vm.runInContext(fs.readFileSync(path.join(root,variant,'content.js'),'utf8'),context);
