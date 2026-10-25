@@ -1,0 +1,37 @@
+{
+  "data1.csv": {
+    "bytes": 1406307,
+    "sha256": "204c226d6b6126a40423084ce9d1391a162d0545f451b858464c1b9b742a8900",
+    "copied_from": "C:\\Users\\perso\\EJIE\\Sir Buloy Act\\web extention\\dataset\\data1.csv"
+  },
+  "data2.csv": {
+    "bytes": 31567326,
+    "sha256": "b1a7c26b354632c80817e10af154c4e5007f9480fb43a8ac2730491500fa2780",
+    "copied_from": "C:\\Users\\perso\\EJIE\\Sir Buloy Act\\web extention\\dataset\\data2.csv"
+  },
+  "data3.csv": {
+    "bytes": 9771799,
+    "sha256": "6c188a828be2962cdc718c396afaf5dafc93bbc679470e8497b6583d8d103c8c",
+    "copied_from": "C:\\Users\\perso\\EJIE\\Sir Buloy Act\\web extention\\dataset\\data3.csv"
+  },
+  "data4.csv": {
+    "bytes": 45664500,
+    "sha256": "0c0b149a976a65ce8fc2002ce1cbb968295b400612a89a64d62b9f5efc1562dd",
+    "copied_from": "C:\\Users\\perso\\EJIE\\Sir Buloy Act\\web extention\\dataset\\data4.csv"
+  },
+  "exclude.csv": {
+    "bytes": 855304,
+    "sha256": "96d48b5c9e957e2dc06f880b2161476da192f814f74332cfd2e3d61a35309dc3",
+    "copied_from": "C:\\Users\\perso\\EJIE\\Sir Buloy Act\\web extention\\dataset\\exclude.csv"
+  },
+  "exclude1.csv": {
+    "bytes": 12283023,
+    "sha256": "f7229c4f5f105a74f5b72df71ed8154f9fca10b6535b488192434fd988c848d3",
+    "copied_from": "C:\\Users\\perso\\EJIE\\Sir Buloy Act\\web extention\\dataset\\exclude1.csv"
+  },
+  "phishtank.csv": {
+    "bytes": 10226420,
+    "sha256": "df13ce3768b862c467866c103fbeb35cfe21580513d859e49a6dd8a5d652faec",
+    "copied_from": "C:\\Users\\perso\\EJIE\\Sir Buloy Act\\web extention\\dataset\\phishtank.csv"
+  }
+}

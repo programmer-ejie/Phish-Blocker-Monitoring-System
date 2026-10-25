@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const score = Number(result.score);
     scoreEl.textContent = Number.isFinite(score)
-      ? `Phishing probability ${Math.round(Math.max(0, Math.min(1, score)) * 100)}%`
+      ? `Model phishing score ${Math.round(Math.max(0, Math.min(1, score)) * 100)}%`
       : "Prediction percentage unavailable";
     detailsEl.textContent = result.reason || "No suspicious indicators were reported.";
   }

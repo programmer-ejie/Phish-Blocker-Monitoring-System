@@ -6,3 +6,11 @@ __pycache__/
 .DS_Store
 dataset/phishtank.csv
 .venv/
+training_data/*.csv
+!training_data/reviewed_urls.csv
+artifacts/
+.ipynb_checkpoints/
+!training_data/reviewed_training_urls.csv
+training_data/experiments/
+dataset/urlset.csv/
+dataset/urlset.csv.zip

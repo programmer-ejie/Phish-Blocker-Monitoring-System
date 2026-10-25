@@ -46,7 +46,9 @@ async function logToDatabase(result) {
     campus_name: deviceConfig.campus_name,
     metadata: {
       ml_engine: result.ml_engine,
-      model_threshold: result.model_threshold
+      model_threshold: result.model_threshold,
+      model_block_threshold: result.model_block_threshold,
+      model_decision: result.ml_decision
     }
   };
   try {

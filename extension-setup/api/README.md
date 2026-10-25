@@ -2,7 +2,7 @@
 
 FastAPI backend for the browser extension. Inference uses the retrained character
 TF-IDF + Logistic Regression bundle at `dataset/phishing_url_bundle.joblib`, with
-its saved decision threshold (0.569018 for the supplied artifact). There is no
+its saved warning threshold and optional validated blocking threshold. There is no
 fallback to the old numeric-feature model or metadata coefficients.
 
 ## Deploy to Render
@@ -58,7 +58,7 @@ detection enabled. One worker avoids loading multiple copies of the model.
 
 `/check_url` preserves `url`, `score`, `ml_engine`, `risk_level`, `status`, and
 `reason`, adding `model_threshold`. Model scores at or above the saved threshold
-produce `High` / `Block`; verified blocklist or Google matches also block. Below
+produce a non-blocking `Medium` / `Suspicious` warning unless a separate validated block threshold is present. Verified blocklist or Google matches can still block. Below
 threshold, multiple heuristic patterns can produce `Medium` / `Suspicious`.
 This intentionally replaces the old fixed 0.70/0.85 score rules. Path/query case
 is preserved to match training preprocessing. Submitted target URLs are not fetched.
@@ -84,3 +84,29 @@ Render references: [FastAPI deployment](https://render.com/docs/deploy-fastapi),
 Render only serves predictions. `/logs` and Supabase configuration have been removed.
 The extensions submit logs directly to the Laravel `/api/phishing-logs` endpoint.
 See `../HOSTINGER_SETUP.md` for MySQL deployment and all six extensions.
+
+## One-run quality workflow (v4)
+
+Use `retrain_phishing_urls.ipynb` with the registered PhishBlock kernel, or execute
+`train_model.py` in that same Python environment. It audits coverage and labels,
+accepts evidence-backed training reviews, compares component/structure/ensemble
+features on frozen splits, and exports a validation review queue. Runtime
+promotion is guarded by warning, block, homepage, and reload checks.
+
+Older models now warn instead of blocking solely from their score. New models
+can block only with an approved two-stage decision policy. PhishTank/Google
+matches remain blocking signals. The six extensions display warnings without
+covering the page. Failed v4 candidates are rejected by API startup.
+
+Read [RETRAIN_AND_DEPLOY.md](RETRAIN_AND_DEPLOY.md) for the one-command runner,
+reviewed CSV format, exact quality gates, report locations, and push instructions.
+
+## Final strict release
+
+Strict mode is the explicit selected profile; recall >=80% remains mandatory.
+A passing v5 notebook run generates `github_api_release/` under its run directory,
+with an approved model, exact helper, `release_utils.py`, verification script,
+standalone Render configuration, model report, and file hashes. Copy the folder
+contents into the standalone API repo only when READY_FOR_GITHUB is True. Failed
+runs preserve the runtime model and generate no production package. See
+RETRAIN_AND_DEPLOY.md for verification and push steps. No automatic push occurs.

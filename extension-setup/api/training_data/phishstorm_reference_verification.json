@@ -1,0 +1,22 @@
+{
+  "status": "verified_primary_snapshot",
+  "source_record": "https://research.aalto.fi/en/datasets/phishstorm-phishing-legitimate-url-dataset/",
+  "reference_file": "training_data/phishstorm_original.csv",
+  "sha256": "f7229c4f5f105a74f5b72df71ed8154f9fca10b6535b488192434fd988c848d3",
+  "retrieved_from": "https://research.aalto.fi/files/16859732/urlset.csv.zip",
+  "verified_by": "Codex: user-supplied Aalto download; archive-origin metadata, CSV schema and ZIP-member equality checked",
+  "verified_at": "2026-10-25T02:14:31.894280+00:00",
+  "label_mapping": {
+    "0": "legitimate",
+    "1": "phishing"
+  },
+  "verification_basis": "User downloaded the publisher archive following the Aalto source link. NTFS download metadata identifies research.aalto.fi. Extracted CSV and ZIP member hashes match. No publisher-signed checksum is claimed.",
+  "archive_evidence": {
+    "archive_sha256": "14f9cc826544f7e416bd88d3d247c4a86f35600b661f33347d059ace7bf63949",
+    "HostUrl": {
+      "scheme": "https",
+      "host": "research.aalto.fi",
+      "path": "/"
+    }
+  }
+}

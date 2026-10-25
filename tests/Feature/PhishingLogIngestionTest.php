@@ -14,7 +14,8 @@ function extensionLogPayload(array $overrides = []): array
         'reason' => 'ML threshold reached',
         'computer_number' => 1,
         'campus_name' => 'SLSU-TO',
-        'metadata' => ['ml_engine' => 'phishing_url_bundle', 'model_threshold' => 0.569018],
+        'metadata' => ['ml_engine' => 'phishing_url_bundle', 'model_threshold' => 0.569018,
+            'model_block_threshold' => 0.95, 'model_decision' => 'Suspicious'],
     ], $overrides);
 }
 
@@ -25,6 +26,8 @@ test('an extension can submit a log without a browser session', function () {
     $campus = Campus::firstOrFail();
     expect(PhishingLog::firstOrFail()->campus_id)->toBe($campus->id);
     expect(PhishingLog::firstOrFail()->metadata['ml_engine'])->toBe('phishing_url_bundle');
+    expect(PhishingLog::firstOrFail()->metadata['model_block_threshold'])->toBe(0.95);
+    expect(PhishingLog::firstOrFail()->metadata['model_decision'])->toBe('Suspicious');
     expect($campus->computer_count)->toBe(1);
     expect(Alert::firstOrFail()->severity)->toBe('High');
 });

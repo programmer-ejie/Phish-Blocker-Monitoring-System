@@ -8,16 +8,14 @@
 
   const host = window.location.hostname;
 
-  // Skip local, chrome, or search engine pages
-  const searchEngines = ["google.", "bing.", "yahoo.", "duckduckgo.", "baidu."];
+  // Skip only local/browser pages; a brand substring must never bypass checks.
   if (
     host === "localhost" ||
     host === "127.0.0.1" ||
     host === "" ||
-    window.location.protocol.startsWith("chrome") ||
-    searchEngines.some(se => host.includes(se))
+    window.location.protocol.startsWith("chrome")
   ) {
-    console.log("PhishBlock: skipping check for local/search page:", host);
+    console.log("PhishBlock: skipping check for local/browser page:", host);
     return;
   }
 
@@ -156,7 +154,31 @@
     storeResultForUrl(window.location.href, result);
   }
 
+  function showWarningBanner(result) {
+    document.getElementById("phishblock-warning-v1")?.remove();
+    const banner = document.createElement("div");
+    banner.id = "phishblock-warning-v1";
+    banner.setAttribute("role", "status");
+    Object.assign(banner.style, {
+      position: "fixed", bottom: "16px", right: "16px", maxWidth: "360px",
+      zIndex: "2147483647", background: "#29200d", color: "#ffdfa0",
+      border: "1px solid #a77926", borderRadius: "12px", padding: "16px",
+      font: "13px/1.5 system-ui, sans-serif", boxShadow: "0 8px 32px #0006"
+    });
+    const message = document.createElement("div");
+    message.textContent = "PhishBlock: this URL needs review. This model warning does not prove phishing. Avoid entering sensitive information until you verify the destination.";
+    const dismiss = document.createElement("button");
+    dismiss.type = "button";
+    dismiss.textContent = "Dismiss warning";
+    Object.assign(dismiss.style, { marginTop: "10px", cursor: "pointer" });
+    dismiss.addEventListener("click", () => banner.remove());
+    banner.appendChild(message);
+    banner.appendChild(dismiss);
+    (document.documentElement || document.body).appendChild(banner);
+  }
+
   async function checkAndAct(targetUrl) {
+    document.getElementById("phishblock-warning-v1")?.remove();
     let bgResp;
     try {
       bgResp = await callBackgroundFetch(targetUrl, 9000);
@@ -183,6 +205,7 @@
     }
 
     overlay.remove();
+    if (status === "Suspicious" || result?.risk_level === "Medium") showWarningBanner(result);
     storeResultForUrl(targetUrl, result);
   }
 

@@ -1,0 +1,7 @@
+url,label,notes
+https://www.instagram.com/,0,Official Instagram homepage; user-reported false positive
+https://instagram.com/,0,Official Instagram homepage without www
+https://www.facebook.com/,0,Official Facebook homepage; user-reported false positive
+https://facebook.com/,0,Official Facebook homepage without www
+https://www.google.com/,0,Official Google homepage; reproduced false positive
+https://google.com/,0,Official Google homepage without www

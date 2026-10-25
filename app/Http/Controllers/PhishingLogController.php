@@ -25,6 +25,8 @@ class PhishingLogController extends Controller
             'metadata' => ['sometimes', 'array'],
             'metadata.ml_engine' => ['nullable', 'string', 'max:100'],
             'metadata.model_threshold' => ['nullable', 'numeric', 'between:0,1'],
+            'metadata.model_block_threshold' => ['nullable', 'numeric', 'between:0,1'],
+            'metadata.model_decision' => ['nullable', Rule::in(['Proceed', 'Suspicious', 'Block'])],
         ]);
 
         $log = DB::transaction(function () use ($data): PhishingLog {
@@ -43,7 +45,7 @@ class PhishingLogController extends Controller
             $log = PhishingLog::create([
                 ...$data,
                 'campus_id' => $campus?->id,
-                'metadata' => array_intersect_key($data['metadata'] ?? [], array_flip(['ml_engine', 'model_threshold'])),
+                'metadata' => array_intersect_key($data['metadata'] ?? [], array_flip(['ml_engine', 'model_threshold', 'model_block_threshold', 'model_decision'])),
             ]);
 
             if ($campus) {

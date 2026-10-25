@@ -1,0 +1,65 @@
+{
+  "review_date": "2026-10-25",
+  "data4": {
+    "identity": "Matches all records in publisher Kaggle v1 CSV, plus one local record",
+    "source": "https://www.kaggle.com/datasets/sid321axn/malicious-urls-dataset",
+    "metadata_api": "https://www.kaggle.com/api/v1/datasets/view/sid321axn/malicious-urls-dataset",
+    "publisher_license_metadata": "CC0: Public Domain",
+    "comparison": {
+      "publisher_csv_sha256": "d83ce942075dd63ed4d11560cfdcd9d512caa3d680e292f22cab484e8f074d01",
+      "local_csv_sha256": "0c0b149a976a65ce8fc2002ce1cbb968295b400612a89a64d62b9f5efc1562dd",
+      "publisher_rows": 651191,
+      "local_rows": 651192,
+      "extra_local_records": 1,
+      "missing_publisher_records": 0
+    },
+    "upstream_sources_declared_by_uploader": [
+      "ISCX-URL-2016",
+      "malwaredomains",
+      "faizann24 repository",
+      "PhishTank",
+      "PhishStorm"
+    ]
+  },
+  "phishstorm": {
+    "source_record": "https://research.aalto.fi/en/datasets/phishstorm-phishing-legitimate-url-dataset/",
+    "doi": "10.24342/f49465b2-c68a-4182-9171-075f0ed797d5",
+    "primary_label_mapping": {
+      "0": "legitimate",
+      "1": "phishing"
+    },
+    "published_records": 96018,
+    "published_classes": {
+      "legitimate": 48009,
+      "phishing": 48009
+    },
+    "collection_year": 2014,
+    "local_reference": "exclude1.csv",
+    "local_reference_sha256": "f7229c4f5f105a74f5b72df71ed8154f9fca10b6535b488192434fd988c848d3",
+    "identity_status": "Resolved: user-supplied publisher ZIP has Aalto download-origin metadata; extracted CSV is byte-identical to the audited local reference.",
+    "publisher_archive_status": "Automated download returned 403; user supplied original archive on 2026-10-25.",
+    "license_metadata": "Unspecified on publisher record",
+    "verified_primary_snapshot_sha256": "f7229c4f5f105a74f5b72df71ed8154f9fca10b6535b488192434fd988c848d3"
+  },
+  "audit": {
+    "matched_records": 96062,
+    "proposed_disagreements": 92005,
+    "by_original_label": {
+      "phishing": 47673,
+      "benign": 44332
+    },
+    "quarantine_reasons": {
+      "invalid URL": 3906,
+      "unexpected end of data": 10,
+      "fewer than 14 fields": 98,
+      "',' expected after '\"'": 5,
+      "could not convert string to float: '\\x81\u00dd\\x15\\x18&\u00f6\\x0b\u00eb\u00e5E\u00d0\u00e4\\x02\u00a2\u00b6\u00c5j\u00bd\u00dbF\\x9a4\u00c8:t`\\x93I\\x8eb\\x00\u00d4m\u00d46\\xad\\x13\u00f22G\\x86\u00ab\u00fc\\x84\u00acmy%\u00d1\\x99r000000'": 1,
+      "could not convert string to float: \"0.7'8049\"": 1,
+      "non-ASCII URL with unconfirmed source encoding": 2
+    },
+    "corrections_applied": 92005,
+    "active_source_repair_experiment": "phishstorm_restored_v1",
+    "report_directory": "artifacts/source_label_audit_20261025T013618706250Z",
+    "scope": "Corrections applied only to a new derived research dataset; original files and old evaluation split retained."
+  }
+}

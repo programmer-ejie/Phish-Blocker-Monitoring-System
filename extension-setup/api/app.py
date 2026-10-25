@@ -15,7 +15,8 @@ import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-from phishing_url_utils import normalize_url, predict_urls
+from phishing_url_utils import normalize_url, predict_urls, decision_thresholds
+from release_utils import strict_report_failures, file_hash
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / '.env')
@@ -42,6 +43,21 @@ def load_model_bundle(path):
     threshold = float(bundle['threshold'])
     if not math.isfinite(threshold) or not 0 <= threshold <= 1:
         raise RuntimeError('The bundle has an invalid decision threshold.')
+    decision_thresholds(bundle)
+    if bundle.get('preprocessing_version', 0) >= 4 and not bundle.get('deployment_approved', False):
+        raise RuntimeError('This research candidate failed deployment gates; use an approved runtime bundle.')
+    if bundle.get('preprocessing_version', 0) >= 5:
+        proof = bundle.get('release_metrics', {})
+        failures = strict_report_failures(proof)
+        if bundle.get('release_profile') != 'strict' or failures:
+            raise RuntimeError('Strict release proof is missing or failing; the candidate cannot be served.')
+        if not math.isclose(threshold, float(proof.get('threshold', -1)), abs_tol=1e-12):
+            raise RuntimeError('Model threshold differs from its strict evaluation proof.')
+        block_threshold = decision_thresholds(bundle)[1]
+        if block_threshold != proof.get('block_threshold') or (block_threshold is not None and proof.get('block_test_metrics') is None):
+            raise RuntimeError('Blocking policy differs from its strict evaluation proof.')
+        if proof.get('helper_sha256') != file_hash(BASE_DIR/'phishing_url_utils.py'):
+            raise RuntimeError('Inference helper differs from the evaluated strict release.')
     if list(bundle['pipeline'].classes_) != [0, 1]:
         raise RuntimeError('Expected model classes 0=benign and 1=phishing.')
     trained_version = bundle.get('versions', {}).get('scikit-learn')
@@ -158,17 +174,22 @@ def hybrid_check(url, api_key=None):
     if check_with_google_safebrowsing(url, api_key):
         high_risk = True
         reasons.append('Threat detected (Google Safe Browsing)')
-    if score >= threshold:
+    ml_decision = str(result['decision'])
+    _, block_threshold = decision_thresholds(model_bundle)
+    if ml_decision == 'Block':
         high_risk = True
-        reasons.append(f'ML phishing score {score:.3f} meets model threshold {threshold:.3f}')
+        reasons.append(f'ML score {score:.3f} meets validated blocking threshold {block_threshold:.3f}')
+    elif ml_decision == 'Suspicious':
+        reasons.append(f'ML score {score:.3f} exceeds warning threshold {threshold:.3f}; review before entering sensitive information')
     else:
         reasons.append(f'ML score {score:.3f} below model threshold {threshold:.3f}')
     flags = [name for name, flagged in pattern_based_check(url).items() if flagged]
-    risk_level = 'High' if high_risk else ('Medium' if len(flags) >= 2 else 'Low')
+    risk_level = 'High' if high_risk else ('Medium' if ml_decision == 'Suspicious' or len(flags) >= 2 else 'Low')
     if flags:
         reasons.append('Pattern flags: ' + ', '.join(flags))
     return {'url': url, 'score': score, 'ml_engine': 'phishing_url_bundle',
             'model_threshold': threshold, 'risk_level': risk_level,
+            'model_block_threshold': block_threshold, 'ml_decision': ml_decision,
             'status': {'High': 'Block', 'Medium': 'Suspicious', 'Low': 'Proceed'}[risk_level],
             'reason': ' | '.join(reasons)}
 
@@ -180,6 +201,7 @@ def home():
             'pipeline_loaded': model_bundle is not None,
             'metadata_fallback_loaded': False,
             'model_threshold': float(model_bundle['threshold']) if model_bundle else None,
+            'model_block_threshold': decision_thresholds(model_bundle)[1] if model_bundle else None,
             'phishtank_loaded': bool(phishtank_urls),
             'logging_backend': 'hostinger-laravel'}
 
