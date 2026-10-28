@@ -74,3 +74,25 @@ test('extension callers cannot choose database ids or unexpected metadata', func
     expect($log->campus_id)->not->toBe(999);
     expect($log->metadata)->not->toHaveKey('unexpected');
 });
+
+test('detection time preserves UTC and displays Philippine time while receipt time is independent', function () {
+    $this->postJson('/api/phishing-logs', extensionLogPayload([
+        'detected_at' => '2026-10-27T16:30:00.123Z',
+        'created_at' => '2000-01-01T00:00:00Z',
+    ]))->assertCreated();
+    $log = PhishingLog::firstOrFail();
+    expect($log->detected_at->utc()->format('Y-m-d H:i:s.v'))->toBe('2026-10-27 16:30:00.123');
+    expect($log->detected_at->setTimezone('Asia/Manila')->format('Y-m-d H:i'))->toBe('2026-10-28 00:30');
+    expect($log->created_at->year)->not->toBe(2000);
+});
+
+test('detection time is optional for older extensions', function () {
+    $this->postJson('/api/phishing-logs', extensionLogPayload())->assertCreated();
+    expect(PhishingLog::firstOrFail()->detected_at)->toBeNull();
+});
+
+test('detection time requires an explicit UTC timestamp', function () {
+    $this->postJson('/api/phishing-logs', extensionLogPayload([
+        'detected_at' => '2026-10-28 12:00:00',
+    ]))->assertUnprocessable()->assertJsonValidationErrors('detected_at');
+});

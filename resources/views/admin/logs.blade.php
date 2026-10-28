@@ -57,7 +57,7 @@
                                 <td>{{ $record['risk_level'] }}</td>
                                 <td>{{ $record['status'] }}</td>
                                 <td>{{ $record['reason'] }}</td>
-                                <td>{{ $record['computer_number'] }}</td>
+                                <td>{{ $record['device_name'] }}</td>
                                 <td>{{ $record['campus_name'] }}</td>
                                 <td class="text-nowrap" style="min-width: 420px;">{{ $record['url'] }}</td>
                             </tr>

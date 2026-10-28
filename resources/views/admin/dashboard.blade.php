@@ -148,7 +148,7 @@
                             <tr>
                                 <th>Time</th>
                                 <th>URL</th>
-                                <th>Campus</th>
+                                <th>Computer</th>
                                 <th>Risk</th>
                                 <th>Status</th>
                             </tr>
@@ -158,7 +158,7 @@
                                 <tr class="align-middle">
                                     <td>{{ $record['time'] }}</td>
                                     <td>{{ $record['url'] }}</td>
-                                    <td>{{ $record['campus_name'] }}</td>
+                                    <td>{{ $record['device_name'] }}</td>
                                     <td>
                                         <span class="badge bg-{{ match(strtolower($record['risk_level'])) {
                                             'critical', 'high' => 'danger-subtle text-danger border border-danger',

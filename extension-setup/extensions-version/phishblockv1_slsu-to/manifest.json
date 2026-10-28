@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PhishBlock",
-  "version": "1.1",
+  "version": "1.2",
   "description": "Real-time phishing risk detection and campus endpoint monitoring.",
   "permissions": [
     "scripting",

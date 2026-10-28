@@ -1,6 +1,5 @@
 const DEFAULT_PREDICTION_API = "https://phish-blocker-monitoring-system-8f1o.onrender.com/check_url?url=";
 let deviceConfig = {
-  computer_number: null,
   campus_name: null,
   prediction_api_url: DEFAULT_PREDICTION_API,
   logging_api_url: ""
@@ -13,7 +12,6 @@ const campusCodeReady = fetch(chrome.runtime.getURL("config.json"))
   })
   .then(cfg => {
     deviceConfig = {
-      computer_number: cfg.computer_number ?? null,
       campus_name: cfg.campus_name ?? null,
       prediction_api_url: cfg.prediction_api_url || DEFAULT_PREDICTION_API,
       logging_api_url: cfg.logging_api_url || ""
@@ -25,33 +23,73 @@ const campusCodeReady = fetch(chrome.runtime.getURL("config.json"))
     return deviceConfig;
   });
 
+let registrationPromise = null;
+
+async function registerDevice() {
+  await campusCodeReady;
+  if (!deviceConfig.logging_api_url || !deviceConfig.campus_name) {
+    throw new Error("Set campus_name and logging_api_url in config.json before registering this device");
+  }
+  const saved = await chrome.storage.local.get("phishblockDeviceUuid");
+  const deviceUuid = saved.phishblockDeviceUuid || crypto.randomUUID();
+  if (!saved.phishblockDeviceUuid) {
+    await chrome.storage.local.set({ phishblockDeviceUuid: deviceUuid });
+  }
+  const registrationUrl = new URL(deviceConfig.logging_api_url);
+  registrationUrl.pathname = registrationUrl.pathname.replace(/\/phishing-logs\/?$/, "/devices/register");
+  if (registrationUrl.pathname === new URL(deviceConfig.logging_api_url).pathname) {
+    throw new Error("logging_api_url must end in /api/phishing-logs");
+  }
+  const response = await fetchWithTimeout(registrationUrl.href, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({ device_uuid: deviceUuid, campus_name: deviceConfig.campus_name })
+  }, 12000);
+  if (!response.ok) throw new Error(`Device registration returned HTTP ${response.status}`);
+  const device = await response.json();
+  if (device.device_uuid !== deviceUuid || device.campus_name !== deviceConfig.campus_name || !device.name) {
+    throw new Error("Invalid device registration response");
+  }
+  await chrome.storage.local.set({ phishblockDevice: device });
+  return device;
+}
+
+function ensureDeviceRegistered() {
+  if (!registrationPromise) {
+    registrationPromise = registerDevice().catch(error => {
+      registrationPromise = null;
+      throw error;
+    });
+  }
+  return registrationPromise;
+}
+
 async function logToDatabase(result) {
   if (!result) return;
+  const detectedAt = new Date().toISOString();
   await campusCodeReady;
   if (!deviceConfig.logging_api_url) {
     console.warn("Logging is not configured: set logging_api_url in config.json to your Hostinger /api/phishing-logs endpoint.");
     return;
   }
-  if (deviceConfig.computer_number == null || !deviceConfig.campus_name) {
-    console.warn("Computer number and campus name are required for monitoring logs");
-    return;
-  }
-  const payload = {
-    url: result.url,
-    score: result.score,
-    risk_level: result.risk_level,
-    status: result.status,
-    reason: result.reason,
-    computer_number: deviceConfig.computer_number,
-    campus_name: deviceConfig.campus_name,
-    metadata: {
-      ml_engine: result.ml_engine,
-      model_threshold: result.model_threshold,
-      model_block_threshold: result.model_block_threshold,
-      model_decision: result.ml_decision
-    }
-  };
   try {
+    const device = await ensureDeviceRegistered();
+    const payload = {
+      detected_at: detectedAt,
+      url: result.url,
+      score: result.score,
+      risk_level: result.risk_level,
+      status: result.status,
+      reason: result.reason,
+      device_uuid: device.device_uuid,
+      campus_name: deviceConfig.campus_name,
+      metadata: {
+        ml_engine: result.ml_engine,
+        model_threshold: result.model_threshold,
+        model_block_threshold: result.model_block_threshold,
+        model_decision: result.ml_decision
+      }
+    };
     const response = await fetchWithTimeout(deviceConfig.logging_api_url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },

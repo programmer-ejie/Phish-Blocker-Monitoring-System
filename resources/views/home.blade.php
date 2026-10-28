@@ -340,7 +340,7 @@
                                                 <div class="card-body p-4">
                                                     <p class="fw-medium mb-4">"{{ $record['reason'] }}"</p>
                                                     <h5 class="text-secondary">{{ $record['url'] }}</h5>
-                                                    <p class="fw-medium fs--1 mb-0">{{ $record['campus_name'] }} | Computer #{{ $record['computer_number'] }} | {{ $record['risk_level'] }}</p>
+                                                    <p class="fw-medium fs--1 mb-0">{{ $record['device_name'] }} | {{ $record['risk_level'] }}</p>
                                                 </div>
                                             </div>
                                             <div class="card shadow-sm position-absolute top-0 z-index--1 mb-3 w-100 h-100" style="border-radius:10px;transform:translate(25px, 25px)"></div>

@@ -46,15 +46,16 @@ class AdminController extends Controller
     public function logs(Request $request): View
     {
         return view('admin.logs', $this->adminViewData('logs', [
-            'records' => PhishingLog::query()->latest()->paginate(6)->withQueryString()->through(fn (PhishingLog $log) => [
+            'records' => PhishingLog::query()->with('device')->latest()->paginate(6)->withQueryString()->through(fn (PhishingLog $log) => [
                 'url' => $log->url,
                 'score' => $log->score ?? 0,
                 'risk_level' => $log->risk_level,
                 'status' => $log->status,
                 'reason' => $log->reason,
                 'computer_number' => $log->computer_number,
+                'device_name' => $log->device?->name ?? ($log->campus_name.'-PC-'.str_pad((string) $log->computer_number, 3, '0', STR_PAD_LEFT)),
                 'campus_name' => $log->campus_name,
-                'time' => $log->created_at?->format('h:i A') ?? '—',
+                'time' => ($log->detected_at ?? $log->created_at)?->setTimezone('Asia/Manila')->format('h:i A') ?? '—',
             ]),
         ], $request));
     }
@@ -117,15 +118,16 @@ class AdminController extends Controller
 
     private function monitoringRecords(): array
     {
-        return PhishingLog::query()->latest()->limit(100)->get()->map(fn (PhishingLog $log) => [
+        return PhishingLog::query()->with('device')->latest()->limit(100)->get()->map(fn (PhishingLog $log) => [
             'url' => $log->url,
             'score' => $log->score ?? 0,
             'risk_level' => $log->risk_level,
             'status' => $log->status,
             'reason' => $log->reason,
             'computer_number' => $log->computer_number,
+            'device_name' => $log->device?->name ?? ($log->campus_name.'-PC-'.str_pad((string) $log->computer_number, 3, '0', STR_PAD_LEFT)),
             'campus_name' => $log->campus_name,
-            'time' => $log->created_at?->format('h:i A') ?? '—',
+            'time' => ($log->detected_at ?? $log->created_at)?->setTimezone('Asia/Manila')->format('h:i A') ?? '—',
         ])->all();
     }
 
