@@ -42,3 +42,17 @@ the base frozen dataset. Validation/test domain reviews are exported as excluded
 and never moved into training. Actual applied training rows/labels/weights and
 the reviewed CSV are fingerprinted in each run's manifest. Source-label changes
 to the BASE corpus still require a new named experiment.
+
+
+## Monitoring application feedback (2026-10-28)
+
+The application owner supplied the exact host
+`phish-block-monitoring.dissertationsystem.online` as a benign example.
+Eight explicit application URLs, including `/admin/dashboard`, are recorded in
+`reviewed_training_urls.csv` with owner provenance. The dashboard was observed
+redirecting to the expected login page. These are training labels, not a blanket
+trust rule for this domain, other subdomains, or URLs containing this hostname.
+The live API initially returned Block (score 0.9650002434) for the dashboard.
+Retraining and deployment are required to change live predictions; adding CSV
+rows alone does not modify the running Render model. The standard frozen
+holdout and release acceptance gates still apply.
