@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from phishing_url_utils import normalize_url, predict_urls, decision_thresholds
 from release_utils import strict_report_failures, source_hash_matches
+from trusted_url_policy import POLICY as TRUSTED_POLICY, trusted_url
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / '.env')
@@ -187,9 +188,15 @@ def hybrid_check(url, api_key=None):
     risk_level = 'High' if high_risk else ('Medium' if ml_decision == 'Suspicious' or len(flags) >= 2 else 'Low')
     if flags:
         reasons.append('Pattern flags: ' + ', '.join(flags))
+    trusted_override = trusted_url(url) and not any(
+        reason in reasons for reason in ('Phishing (PhishTank)', 'Threat detected (Google Safe Browsing)'))
+    if trusted_override:
+        risk_level = 'Low'
+        reasons.append('Trusted URL override: approved campus policy; original ML score retained')
     return {'url': url, 'score': score, 'ml_engine': 'phishing_url_bundle',
             'model_threshold': threshold, 'risk_level': risk_level,
             'model_block_threshold': block_threshold, 'ml_decision': ml_decision,
+            'trusted_override': trusted_override,
             'status': {'High': 'Block', 'Medium': 'Suspicious', 'Low': 'Proceed'}[risk_level],
             'reason': ' | '.join(reasons)}
 
@@ -203,6 +210,7 @@ def home():
             'model_threshold': float(model_bundle['threshold']) if model_bundle else None,
             'model_block_threshold': decision_thresholds(model_bundle)[1] if model_bundle else None,
             'phishtank_loaded': bool(phishtank_urls),
+            'trusted_policy_version': TRUSTED_POLICY['version'],
             'logging_backend': 'hostinger-laravel'}
 
 

@@ -56,11 +56,11 @@
                                 <span class="badge flex-shrink-0 bg-{{ $campus['tone'] }}-subtle text-{{ $campus['tone'] }} border border-{{ $campus['tone'] }}">{{ $campus['health'] }}</span>
                             </div>
                             <div class="d-flex justify-content-between small mb-2">
-                                <span>Health score</span><strong>{{ $campus['health_score'] }}%</strong>
+                                <span>Health score</span><strong>{{ $campus['health_score_label'] }}</strong>
                             </div>
-                            <div class="health-track mb-3"><span class="bg-{{ $campus['tone'] }}" style="width: {{ $campus['health_score'] }}%"></span></div>
+                            <div class="health-track mb-3"><span class="bg-{{ $campus['tone'] }}" style="width: {{ $campus['health_score'] ?? 0 }}%"></span></div>
                             <div class="row g-2">
-                                <div class="col-sm-3 col-6"><div class="campus-metric"><strong>{{ $campus['uptime'] }}%</strong><span>Uptime</span></div></div>
+                                <div class="col-sm-3 col-6"><div class="campus-metric"><strong>{{ $campus['uptime_label'] }}</strong><span>Uptime</span></div></div>
                                 <div class="col-sm-3 col-6"><div class="campus-metric"><strong>{{ $campus['computers'] }}</strong><span>Endpoints</span></div></div>
                                 <div class="col-sm-3 col-6"><div class="campus-metric"><strong class="text-success">{{ $campus['proceed'] }}</strong><span>Proceed</span></div></div>
                                 <div class="col-sm-3 col-6"><div class="campus-metric"><strong class="text-danger">{{ $campus['blocked'] }}</strong><span>Blocked</span></div></div>

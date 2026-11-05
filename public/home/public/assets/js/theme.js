@@ -272,6 +272,8 @@ var navbarInit = function navbarInit() {
   };
   var navbar = document.querySelector(Selector.NAVBAR); // responsive nav collapsed
 
+  if (!navbar) return;
+
   navbar.addEventListener('click', function (e) {
     if (e.target.classList.contains('nav-link') && window.innerWidth < utils.getBreakpoint(navbar)) {
       navbar.querySelector(Selector.NAVBAR_TOGGLER).click();

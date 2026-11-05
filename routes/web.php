@@ -20,6 +20,8 @@ Route::middleware(['auth', EnsureStaticAdminAuthenticated::class])
     ->group(function (): void {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
+        Route::delete('/logs', [AdminController::class, 'deleteLogs'])->name('logs.delete-all');
+        Route::delete('/logs/{log}', [AdminController::class, 'deleteLog'])->whereNumber('log')->name('logs.destroy');
         Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
         Route::post('/alerts/read-all', [AdminController::class, 'markAllAlertsRead'])->name('alerts.read-all');
         Route::post('/alerts/{alert}/read', [AdminController::class, 'markAlertRead'])->name('alerts.read');

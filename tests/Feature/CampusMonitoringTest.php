@@ -2,8 +2,36 @@
 
 use App\Models\Campus;
 use App\Models\Device;
+use App\Models\PhishingLog;
 use App\Models\User;
 use Illuminate\Support\Str;
+
+test('missing uptime stays unknown while measured zero remains at risk', function () {
+    $user = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+    $campus = Campus::create(['code' => 'SLSU-SanJuan', 'name' => 'San Juan', 'uptime_percentage' => null]);
+    PhishingLog::create(['url' => 'https://example.com', 'campus_name' => $campus->code,
+        'computer_number' => 1, 'risk_level' => 'Low', 'status' => 'Proceed']);
+    foreach (['/admin/dashboard' => 'campusBreakdown', '/admin/analytics' => 'campusAnalytics'] as $url => $key) {
+        $this->actingAs($user)->get($url)->assertOk()->assertSee('Unknown')->assertViewHas($key, function ($items) {
+            $item = collect($items)->firstWhere('name', 'SLSU-SanJuan');
+            expect($item['uptime'])->toBeNull();
+            expect($item['health_score'])->toBeNull();
+            expect($item['health'])->toBe('Unknown');
+            expect($item['tone'])->toBe('secondary');
+            expect($item['proceed'])->toBe(1);
+            return true;
+        });
+    }
+    $this->get('/admin/campuses')->assertOk()->assertViewHas('campuses', fn ($items) => collect($items)->firstWhere('name', 'SLSU-SanJuan')['uptime'] === 'Unknown');
+    $campus->update(['uptime_percentage' => 0]);
+    $this->get('/admin/dashboard')->assertViewHas('campusBreakdown', function ($items) {
+        $item = collect($items)->firstWhere('name', 'SLSU-SanJuan');
+        expect($item['uptime'])->toBe(0.0);
+        expect($item['health_score'])->toBe(0);
+        expect($item['health'])->toBe('At Risk');
+        return true;
+    });
+});
 
 test('dashboard lists every extension campus before any activity', function () {
     $extensionCampuses = collect(glob(base_path('extension-setup/extensions-version/*/config.json')))

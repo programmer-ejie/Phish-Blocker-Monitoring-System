@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "trusted_hosts": [
+        "lms.southernleytestateu.edu.ph",
+        "mail.google.com",
+        "accounts.google.com",
+        "www.google.com",
+        "scholar.google.com",
+        "chatgpt.com",
+        "www.tinkercad.com",
+        "open.spotify.com",
+        "google.com",
+        "tinkercad.com",
+        "drive.google.com",
+        "docs.google.com",
+        "drive.usercontent.google.com",
+        "sites.google.com",
+        "github.com"
+    ],
+    "trusted_paths": {},
+    "trusted_urls": []
+}

@@ -21,7 +21,7 @@
                             <img src="{{ asset('images/slsu.webp') }}" alt="Southern Leyte State University seal" width="42" height="42" class="rounded-circle border bg-white p-1">
                             <h4 class="mb-0 h5">{{ $campus['name'] }}</h4>
                         </div>
-                        <span class="badge bg-{{ strtolower($campus['status']) === 'healthy' ? 'success' : 'warning' }}">{{ $campus['status'] }}</span>
+                        <span class="badge bg-{{ $campus['tone'] }}">{{ $campus['status'] }}</span>
                     </div>
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between border-bottom pb-3 mb-3">

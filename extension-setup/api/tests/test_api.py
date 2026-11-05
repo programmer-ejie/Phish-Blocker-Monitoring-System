@@ -86,6 +86,21 @@ class ApiTests(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get('/check_url', params={'url': url}).status_code, 422)
 
+    def test_trust_overrides_model_but_not_threat_intelligence(self):
+        url = 'https://github.com/login'
+        bundle = {'pipeline': ScoreModel(), 'threshold': .4,
+                  'decision_policy': {'validated': True, 'block_threshold': .85}}
+        with patch.object(api, 'model_bundle', bundle), patch.object(api, 'phishtank_urls', set()):
+            body = self.client.get('/check_url', params={'url': url}).json()
+            self.assertEqual(body['status'], 'Proceed')
+            self.assertEqual(body['ml_decision'], 'Block')
+            self.assertEqual(body['score'], .9)
+            self.assertTrue(body['trusted_override'])
+            with patch.object(api, 'phishtank_urls', {normalize_url(url)}):
+                self.assertEqual(self.client.get('/check_url', params={'url': url}).json()['status'], 'Block')
+            with patch.object(api, 'check_with_google_safebrowsing', return_value=True):
+                self.assertEqual(self.client.get('/check_url', params={'url': url}).json()['status'], 'Block')
+
     def test_model_unavailable_is_not_reported_as_safe(self):
         with patch.object(api, 'model_bundle', None):
             self.assertEqual(self.client.get('/health').status_code, 503)

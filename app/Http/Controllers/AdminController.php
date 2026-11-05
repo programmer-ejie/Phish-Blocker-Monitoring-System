@@ -50,7 +50,9 @@ class AdminController extends Controller
     public function logs(Request $request): View
     {
         return view('admin.logs', $this->adminViewData('logs', [
+            'deletionCampuses' => $this->visibleCampusCodes(),
             'records' => $this->logsQuery()->with('device')->latest('id')->paginate(6)->withQueryString()->through(fn (PhishingLog $log) => [
+                'id' => $log->id,
                 'url' => $log->url,
                 'score' => $log->score ?? 0,
                 'risk_level' => $log->risk_level,
@@ -102,6 +104,34 @@ class AdminController extends Controller
         $this->alertsQuery()->whereNull('read_at')->update(['read_at' => now()]);
 
         return back()->with('status', 'All alerts marked as read.');
+    }
+
+    public function deleteLogs(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'campus' => ['required', 'string', \Illuminate\Validation\Rule::in(array_merge(['all'], $this->visibleCampusCodes()))],
+        ]);
+        $query = $this->logsQuery();
+        if ($data['campus'] !== 'all') {
+            $query->where('campus_name', $data['campus']);
+        }
+        $deleted = $query->delete();
+        $scope = $data['campus'] === 'all' ? 'all accessible campuses' : $data['campus'];
+
+        return redirect()->route('admin.logs')
+            ->with('status', "Deleted {$deleted} monitoring logs from {$scope}.");
+    }
+
+    public function deleteLog(Request $request, int $log): RedirectResponse
+    {
+        $data = $request->validate(['page' => ['nullable', 'integer', 'min:1']]);
+        $this->logsQuery()->findOrFail($log)->delete();
+
+        $lastPage = max(1, (int) ceil($this->logsQuery()->count() / 6));
+        $page = min((int) ($data['page'] ?? 1), $lastPage);
+
+        return redirect()->route('admin.logs', ['page' => $page])
+            ->with('status', 'Monitoring log deleted.');
     }
 
     public function deleteAllAlerts(): RedirectResponse
@@ -184,7 +214,7 @@ class AdminController extends Controller
         $campuses = $this->campusesQuery()->get()->keyBy('code');
 
         return collect($this->visibleCampusCodes())->map(function (string $code) use ($logs, $devices, $campuses): array {
-            $campus = $campuses->get($code) ?? new Campus(['code' => $code, 'uptime_percentage' => 100]);
+            $campus = $campuses->get($code) ?? new Campus(['code' => $code]);
             $campusLogs = $logs->where('campus_name', $campus->code);
             $campusDevices = $devices->where('campus_name', $code);
             $computers = $campusLogs->pluck('computer_number')->merge($campusDevices->pluck('computer_number'))->filter(fn ($number) => $number !== null)->unique()->count();
@@ -194,8 +224,9 @@ class AdminController extends Controller
             $suspicious = $campusLogs->where('status', 'Suspicious')->count();
             $proceed = $campusLogs->where('status', 'Proceed')->count();
             $threatRate = $scans ? (($blocked + $suspicious) / $scans) * 100 : 0;
-            $healthScore = max(0, min(100, (int) round((float) $campus->uptime_percentage - ($threatRate * 0.35))));
-            $health = $healthScore >= 95 ? 'Healthy' : ($healthScore >= 85 ? 'Watch' : 'At Risk');
+            $uptime = $campus->uptime_percentage === null ? null : (float) $campus->uptime_percentage;
+            $healthScore = $uptime === null ? null : max(0, min(100, (int) round($uptime - ($threatRate * 0.35))));
+            $health = $healthScore === null ? 'Unknown' : ($healthScore >= 95 ? 'Healthy' : ($healthScore >= 85 ? 'Watch' : 'At Risk'));
 
             return [
                 'name' => $campus->code,
@@ -204,15 +235,17 @@ class AdminController extends Controller
                 'suspicious' => $suspicious,
                 'proceed' => $proceed,
                 'computers' => $computers,
-                'uptime' => (float) $campus->uptime_percentage,
+                'uptime' => $uptime,
+                'uptime_label' => $uptime === null ? 'Unknown' : $uptime.'%',
                 'last_sync' => $lastSync?->diffForHumans() ?? 'Never',
                 'health_score' => $healthScore,
+                'health_score_label' => $healthScore === null ? 'Unknown' : $healthScore.'%',
                 'threat_rate' => (int) round($threatRate),
                 'proceed_percentage' => $scans ? (int) round(($proceed / $scans) * 100) : 0,
                 'suspicious_percentage' => $scans ? (int) round(($suspicious / $scans) * 100) : 0,
                 'blocked_percentage' => $scans ? (int) round(($blocked / $scans) * 100) : 0,
                 'health' => $lastSync ? $health : 'No activity',
-                'tone' => ! $lastSync ? 'secondary' : ($health === 'Healthy' ? 'success' : ($health === 'Watch' ? 'warning' : 'danger')),
+                'tone' => ! $lastSync || $healthScore === null ? 'secondary' : ($health === 'Healthy' ? 'success' : ($health === 'Watch' ? 'warning' : 'danger')),
             ];
         })->all();
     }
@@ -307,7 +340,8 @@ class AdminController extends Controller
             'name' => $campus['name'],
             'computers' => $campus['computers'],
             'last_sync' => $campus['last_sync'],
-            'uptime' => number_format($campus['uptime'], 1).'%',
+            'uptime' => $campus['uptime'] === null ? 'Unknown' : number_format($campus['uptime'], 1).'%',
+            'tone' => $campus['tone'],
             'status' => $campus['health'],
         ])->all();
     }

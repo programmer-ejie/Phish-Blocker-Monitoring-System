@@ -129,10 +129,10 @@
                                         <strong>{{ $campus['name'] }}</strong>
                                         <span class="badge text-bg-{{ $campus['tone'] }}">{{ $campus['health'] }}</span>
                                     </div>
-                                    <div class="d-flex justify-content-between small mb-1"><span>Health score</span><strong>{{ $campus['health_score'] }}%</strong></div>
-                                    <div class="progress mb-3"><div class="progress-bar bg-{{ $campus['tone'] }}" style="width: {{ $campus['health_score'] }}%"></div></div>
+                                    <div class="d-flex justify-content-between small mb-1"><span>Health score</span><strong>{{ $campus['health_score_label'] }}</strong></div>
+                                    <div class="progress mb-3"><div class="progress-bar bg-{{ $campus['tone'] }}" style="width: {{ $campus['health_score'] ?? 0 }}%"></div></div>
                                     <div class="d-flex justify-content-between small text-secondary"><span>Threat exposure</span><strong class="text-{{ $campus['threat_rate'] >= 25 ? 'danger' : ($campus['threat_rate'] > 0 ? 'warning' : 'success') }}">{{ $campus['threat_rate'] }}%</strong></div>
-                                    <div class="small text-secondary mt-2">{{ $campus['computers'] }} endpoints · {{ $campus['uptime'] }}% uptime</div>
+                                    <div class="small text-secondary mt-2">{{ $campus['computers'] }} endpoints · {{ $campus['uptime_label'] }} uptime</div>
                                 </div>
                             </div>
                         @endforeach

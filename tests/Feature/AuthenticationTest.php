@@ -2,6 +2,19 @@
 
 use App\Models\User;
 
+test('guests can open the login form', function () {
+    $this->get('/login')->assertOk()->assertViewIs('auth.login');
+});
+
+test('signed-in administrators opening login are sent to the admin dashboard', function () {
+    $user = User::factory()->create([
+        'role' => 'admin',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)->get('/login')->assertRedirect('/admin/dashboard');
+});
+
 test('guests are redirected away from the admin dashboard', function () {
     $this->get('/admin/dashboard')->assertRedirect('/login');
 });
