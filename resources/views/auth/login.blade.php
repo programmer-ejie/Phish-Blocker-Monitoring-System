@@ -5,14 +5,15 @@
         .login-header {
             position: relative;
             z-index: 10;
-            height: 76px;
+            min-height: 76px;
+            flex-shrink: 0;
             background: rgba(255, 255, 255, 0.96);
             border-bottom: 1px solid #eef0f3;
             box-shadow: 0 4px 18px rgba(20, 33, 61, 0.05);
         }
 
         .login-header .navbar {
-            height: 100%;
+            min-height: 76px;
         }
 
         .login-header .navbar-brand {
@@ -66,8 +67,8 @@
             background: #f7f9fc;
         }
 
-        .auth-layout { display: flex; min-height: 100vh; min-height: 100dvh; padding-bottom: 68px; flex-direction: column; overflow-x: hidden; background: #f7f9fc; }
-        .site-footer { position: fixed; right: 0; bottom: 0; left: 0; z-index: 1025; padding: 0.95rem 1.5rem; border-top: 1px solid #e4e7ec; background: rgba(255, 255, 255, 0.95); box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.06); color: #667085; backdrop-filter: blur(14px); }
+        .auth-layout { display: flex; min-height: 100vh; min-height: 100dvh; padding-bottom: 0; flex-direction: column; overflow-x: hidden; background: #f7f9fc; }
+        .site-footer { position: static; flex-shrink: 0; padding: 0.95rem 1.5rem; border-top: 1px solid #e4e7ec; background: rgba(255, 255, 255, 0.95); box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.06); color: #667085; backdrop-filter: blur(14px); }
         .site-footer__inner { display: flex; align-items: center; justify-content: center; gap: 0.65rem; font-size: 0.82rem; line-height: 1.5; text-align: center; }
         .site-footer__brand { color: #344054; font-weight: 650; }
         .site-footer__separator { width: 3px; height: 3px; border-radius: 50%; background: #98a2b3; }
@@ -75,7 +76,6 @@
         .login-shell {
             width: 100%;
             max-width: 1320px;
-            max-height: 680px;
             overflow: hidden;
             border: 1px solid #e8ebf0;
             border-radius: 1rem;
@@ -86,6 +86,13 @@
         .login-form-panel {
             padding: clamp(1.5rem, 3vw, 3rem);
         }
+
+        .password-field { position: relative; }
+        .password-field input { padding-right: 3.25rem; }
+        .password-toggle { position: absolute; inset: 0 0 0 auto; width: 3rem; display: grid; place-items: center; border: 0; border-radius: 0.375rem; background: transparent; color: var(--bs-body-color, #344054); }
+        .password-toggle:focus-visible { outline: 2px solid #ef5b35; outline-offset: -3px; }
+        .password-toggle svg { width: 22px; height: 22px; }
+        .password-toggle [hidden] { display: none; }
 
         .login-form-wrap {
             width: 100%;
@@ -116,9 +123,6 @@
                 min-height: calc(100vh - 144px);
             }
 
-            .login-shell {
-                height: min(680px, calc(100vh - 176px));
-            }
         }
 
         @media (max-height: 760px) and (min-width: 992px) {
@@ -147,7 +151,7 @@
         }
 
         @media (max-width: 767.98px) {
-            .auth-layout { padding-bottom: 88px; }
+            .auth-layout { padding-bottom: 0; }
             .site-footer { padding: 0.8rem 1rem; }
             .site-footer__inner { flex-wrap: wrap; gap: 0.25rem 0.5rem; }
             .site-footer__description { width: 100%; }
@@ -201,7 +205,16 @@
 
                         <div class="mb-3">
                             <label for="password" class="form-label">Password</label>
-                            <input id="password" name="password" type="password" class="form-control" value="{{ $defaultPassword }}" required>
+                            <div class="password-field">
+                                <input id="password" name="password" type="password" class="form-control" value="{{ $defaultPassword }}" autocomplete="current-password" required>
+                                <button id="password-toggle" class="password-toggle" type="button" aria-label="Show password" aria-controls="password" aria-pressed="false">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                                        <circle cx="12" cy="12" r="3" />
+                                        <path id="password-eye-slash" d="m3 3 18 18" hidden />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         @error('email')
@@ -235,4 +248,16 @@
         </div>
     </main>
     @include('layouts.footer')
+    <script>
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('password-toggle');
+        const eyeSlash = document.getElementById('password-eye-slash');
+        passwordToggle.addEventListener('click', () => {
+            const showPassword = passwordInput.type === 'password';
+            passwordInput.type = showPassword ? 'text' : 'password';
+            passwordToggle.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
+            passwordToggle.setAttribute('aria-pressed', String(showPassword));
+            eyeSlash.toggleAttribute('hidden', !showPassword);
+        });
+    </script>
 @endsection

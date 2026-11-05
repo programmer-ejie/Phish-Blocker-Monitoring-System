@@ -47,17 +47,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    const hostname = new URL(activeUrl).hostname;
+    if (["localhost", "127.0.0.1", "[::1]"].includes(hostname)) {
+      statusEl.className = "status";
+      statusEl.textContent = "Local page";
+      scoreEl.textContent = "";
+      detailsEl.textContent = "Local pages are excluded from public model checks. Open a public website to test predictions.";
+      return;
+    }
+
     recheckBtn.disabled = true;
     recheckBtn.textContent = "Checking destination...";
     statusEl.className = "status";
     statusEl.textContent = "Checking";
-    detailsEl.textContent = "Analyzing reputation and URL patterns in the background.";
+    detailsEl.textContent = "Connecting to the prediction service. A slow response may take up to 75 seconds.";
 
     chrome.runtime.sendMessage({ action: "checkPhish", url: activeUrl }, (resp) => {
       if (chrome.runtime.lastError || !resp?.ok) {
         statusEl.className = "status high";
         statusEl.textContent = "Check unavailable";
-        detailsEl.textContent = resp?.error || chrome.runtime.lastError?.message || "The detection service did not respond.";
+        detailsEl.textContent = resp?.error?.includes("fetch-timeout")
+          ? "The prediction service timed out after retries. Try again shortly."
+          : resp?.error || chrome.runtime.lastError?.message || (resp?.status ? `Prediction service returned HTTP ${resp.status}. Try again shortly.` : "The detection service did not respond.");
       } else {
         const result = resp.json ?? resp.data ?? resp;
         saveResult(result);

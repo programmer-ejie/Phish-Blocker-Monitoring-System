@@ -179,11 +179,11 @@
         <div class="col-12">
             <div class="card h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center px-4 py-3">
-                    <h4 class="mb-0 h5">Priority Alerts</h4>
+                    <h4 class="mb-0 h5" id="priority-alerts">Priority Alerts</h4>
                     <a href="{{ route('admin.alerts') }}" class="small text-primary text-decoration-underline">View all</a>
                 </div>
                 <ul class="list-group list-group-flush">
-                    @foreach ($alerts as $alert)
+                    @forelse ($alerts as $alert)
                         <li class="list-group-item d-flex align-items-center gap-3">
                             <img src="{{ asset('images/slsu.webp') }}" alt="Southern Leyte State University seal" class="avatar avatar-md rounded-circle school-seal">
                             <div class="flex-grow-1">
@@ -192,8 +192,14 @@
                             </div>
                             <span class="badge bg-{{ in_array($alert['severity'], ['Critical','High']) ? 'danger' : 'warning' }}">{{ $alert['severity'] }}</span>
                         </li>
-                    @endforeach
+                    @empty
+                        <li class="list-group-item text-center text-secondary py-4">No alerts found.</li>
+                    @endforelse
                 </ul>
+                <div class="card-footer bg-transparent d-flex flex-wrap justify-content-between align-items-center gap-2 px-4 py-3">
+                    <p class="mb-0 small text-secondary">Showing {{ $alerts->firstItem() ?? 0 }}?{{ $alerts->lastItem() ?? 0 }} of {{ $alerts->total() }} alerts</p>
+                    {{ $alerts->onEachSide(1)->links() }}
+                </div>
             </div>
         </div>
     </div>
@@ -203,7 +209,7 @@
             <div class="card dashboard-chart-card">
                 <div class="card-header bg-transparent px-4 py-3">
                     <h4 class="mb-1 h5">Scan Activity</h4>
-                    <p class="mb-0 small text-secondary">Database-recorded extension checks during the last seven hours</p>
+                    <p class="mb-0 small text-secondary">Database-recorded extension checks during the last seven hours (PHT, UTC+8)</p>
                 </div>
                 <div class="card-body px-4 pt-2 pb-4">
                     <div class="activity-chart" role="img" aria-label="Hourly scan activity chart">

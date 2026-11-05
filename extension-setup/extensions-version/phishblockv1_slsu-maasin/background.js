@@ -117,6 +117,20 @@ function fetchWithTimeout(url, opts = {}, timeout = 8000) {
     });
 }
 
+// Keep each request below the service worker fetch deadline; retry transient failures.
+async function fetchPrediction(url) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetchWithTimeout(url, { method: "GET" }, 25000);
+      if ([502, 503, 504].includes(response.status) && attempt < 2) continue;
+      return response;
+    } catch (error) {
+      const transient = error.message === "fetch-timeout" || error.name === "TypeError";
+      if (!transient || attempt === 2) throw error;
+    }
+  }
+}
+
 function forwardRecheckToTab(msg, sendResponse) {
   const tabId = Number(msg?.tabId);
 
@@ -150,7 +164,7 @@ function processPhishCheck(msg, sender, sendResponse) {
 
     const target = msg.url;
     campusCodeReady
-      .then(() => fetchWithTimeout(deviceConfig.prediction_api_url + encodeURIComponent(target), { method: "GET" }, 9000))
+      .then(() => fetchPrediction(deviceConfig.prediction_api_url + encodeURIComponent(target)))
       .then(async resp => {
         if (!resp.ok) {
           const text = await resp.text().catch(() => "");

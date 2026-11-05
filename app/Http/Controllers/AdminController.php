@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Alert;
 use App\Models\Campus;
+use App\Models\Device;
 use App\Models\PhishingLog;
 use App\Models\SystemSetting;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 class AdminController extends Controller
@@ -46,7 +50,7 @@ class AdminController extends Controller
     public function logs(Request $request): View
     {
         return view('admin.logs', $this->adminViewData('logs', [
-            'records' => PhishingLog::query()->with('device')->latest()->paginate(6)->withQueryString()->through(fn (PhishingLog $log) => [
+            'records' => $this->logsQuery()->with('device')->latest('id')->paginate(6)->withQueryString()->through(fn (PhishingLog $log) => [
                 'url' => $log->url,
                 'score' => $log->score ?? 0,
                 'risk_level' => $log->risk_level,
@@ -73,7 +77,9 @@ class AdminController extends Controller
     {
         return view('admin.alerts', $this->adminViewData('alerts', [
             'alertSummary' => $this->alertSummary(),
-            'alerts' => Alert::with('campus')->latest()->paginate(5)->withQueryString()->through(fn (Alert $alert) => [
+            'alerts' => $this->alertsQuery()->with('campus')->latest()->orderByDesc('id')->paginate(10)->withQueryString()->through(fn (Alert $alert) => [
+                'id' => $alert->id,
+                'read' => $alert->read_at !== null,
                 'title' => $alert->title,
                 'campus' => $alert->campus?->code ?? 'System-wide',
                 'severity' => $alert->severity,
@@ -81,6 +87,28 @@ class AdminController extends Controller
                 'status' => $alert->status,
             ]),
         ], $request));
+    }
+
+    public function markAlertRead(Alert $alert): RedirectResponse
+    {
+        abort_unless($this->alertsQuery()->whereKey($alert->id)->exists(), 404);
+        $this->alertsQuery()->whereKey($alert->id)->whereNull('read_at')->update(['read_at' => now()]);
+
+        return redirect()->route('admin.alerts')->with('status', 'Alert marked as read.');
+    }
+
+    public function markAllAlertsRead(): RedirectResponse
+    {
+        $this->alertsQuery()->whereNull('read_at')->update(['read_at' => now()]);
+
+        return back()->with('status', 'All alerts marked as read.');
+    }
+
+    public function deleteAllAlerts(): RedirectResponse
+    {
+        $this->alertsQuery()->delete();
+
+        return redirect()->route('admin.alerts')->with('status', 'All alerts deleted. Phishing logs were preserved.');
     }
 
     public function campuses(Request $request): View
@@ -92,6 +120,8 @@ class AdminController extends Controller
 
     public function settings(Request $request): View
     {
+        abort_unless($request->user()->role === 'admin' && $request->user()->campus_name === null, 403);
+
         return view('admin.settings', $this->adminViewData('settings', [
             'settingsGroups' => $this->settingsGroups(),
         ], $request));
@@ -101,24 +131,25 @@ class AdminController extends Controller
     {
         return array_merge([
             'activePage' => $activePage,
+            'unreadAlertCount' => $this->alertsQuery()->whereNull('read_at')->count(),
             'summary' => $this->buildSummary(),
             'records' => $this->monitoringRecords(),
             'notifications' => $this->notifications(),
-            'adminUser' => $request->user()?->only(['name', 'email', 'role']) ?? [],
-            'navItems' => [
+            'adminUser' => $request->user()?->only(['name', 'email', 'role', 'campus_name']) ?? [],
+            'navItems' => array_values(array_filter([
                 ['label' => 'Dashboard', 'route' => 'admin.dashboard', 'key' => 'dashboard'],
                 ['label' => 'Logs', 'route' => 'admin.logs', 'key' => 'logs'],
                 ['label' => 'Analytics', 'route' => 'admin.analytics', 'key' => 'analytics'],
                 ['label' => 'Alerts', 'route' => 'admin.alerts', 'key' => 'alerts'],
                 ['label' => 'Campuses', 'route' => 'admin.campuses', 'key' => 'campuses'],
                 ['label' => 'Settings', 'route' => 'admin.settings', 'key' => 'settings'],
-            ],
+            ], fn (array $item) => $item['key'] !== 'settings' || ($request->user()->role === 'admin' && $request->user()->campus_name === null))),
         ], $extra);
     }
 
     private function monitoringRecords(): array
     {
-        return PhishingLog::query()->with('device')->latest()->limit(100)->get()->map(fn (PhishingLog $log) => [
+        return $this->logsQuery()->with('device')->latest('id')->limit(100)->get()->map(fn (PhishingLog $log) => [
             'url' => $log->url,
             'score' => $log->score ?? 0,
             'risk_level' => $log->risk_level,
@@ -133,25 +164,31 @@ class AdminController extends Controller
 
     private function buildSummary(): array
     {
-        $total = PhishingLog::count();
-        $safe = PhishingLog::whereIn('risk_level', ['Safe', 'Low'])->count();
+        $total = $this->logsQuery()->count();
+        $safe = $this->logsQuery()->whereIn('risk_level', ['Safe', 'Low'])->count();
 
         return [
             'total_scans' => $total,
-            'blocked_today' => PhishingLog::whereDate('created_at', today())->where('status', 'Block')->count(),
-            'review_queue' => PhishingLog::where('status', 'Suspicious')->count(),
-            'active_campuses' => Campus::where('is_active', true)->count(),
+            'blocked_today' => $this->logsQuery()->whereDate('created_at', today())->where('status', 'Block')->count(),
+            'review_queue' => $this->logsQuery()->where('status', 'Suspicious')->count(),
+            'active_campuses' => $this->campusesQuery()->where('is_active', true)->count(),
             'safe_rate' => $total ? (int) round(($safe / $total) * 100) : 0,
-            'critical_incidents' => Alert::where('severity', 'Critical')->whereNotIn('status', ['Resolved', 'Closed'])->count(),
+            'critical_incidents' => $this->alertsQuery()->where('severity', 'Critical')->whereNotIn('status', ['Resolved', 'Closed'])->count(),
         ];
     }
 
     private function campusBreakdown(): array
     {
-        $logs = PhishingLog::get(['campus_name', 'status']);
+        $logs = $this->logsQuery()->get(['campus_name', 'status', 'computer_number', 'created_at']);
+        $devices = $this->devicesQuery()->get();
+        $campuses = $this->campusesQuery()->get()->keyBy('code');
 
-        return Campus::orderBy('code')->get()->map(function (Campus $campus) use ($logs): array {
+        return collect($this->visibleCampusCodes())->map(function (string $code) use ($logs, $devices, $campuses): array {
+            $campus = $campuses->get($code) ?? new Campus(['code' => $code, 'uptime_percentage' => 100]);
             $campusLogs = $logs->where('campus_name', $campus->code);
+            $campusDevices = $devices->where('campus_name', $code);
+            $computers = $campusLogs->pluck('computer_number')->merge($campusDevices->pluck('computer_number'))->filter(fn ($number) => $number !== null)->unique()->count();
+            $lastSync = $campusLogs->pluck('created_at')->merge($campusDevices->pluck('last_seen_at'))->filter()->sortDesc()->first();
             $scans = $campusLogs->count();
             $blocked = $campusLogs->where('status', 'Block')->count();
             $suspicious = $campusLogs->where('status', 'Suspicious')->count();
@@ -166,23 +203,23 @@ class AdminController extends Controller
                 'blocked' => $blocked,
                 'suspicious' => $suspicious,
                 'proceed' => $proceed,
-                'computers' => $campus->computer_count,
+                'computers' => $computers,
                 'uptime' => (float) $campus->uptime_percentage,
-                'last_sync' => $campus->last_sync_at?->diffForHumans() ?? 'Never',
+                'last_sync' => $lastSync?->diffForHumans() ?? 'Never',
                 'health_score' => $healthScore,
                 'threat_rate' => (int) round($threatRate),
                 'proceed_percentage' => $scans ? (int) round(($proceed / $scans) * 100) : 0,
                 'suspicious_percentage' => $scans ? (int) round(($suspicious / $scans) * 100) : 0,
                 'blocked_percentage' => $scans ? (int) round(($blocked / $scans) * 100) : 0,
-                'health' => $health,
-                'tone' => $health === 'Healthy' ? 'success' : ($health === 'Watch' ? 'warning' : 'danger'),
+                'health' => $lastSync ? $health : 'No activity',
+                'tone' => ! $lastSync ? 'secondary' : ($health === 'Healthy' ? 'success' : ($health === 'Watch' ? 'warning' : 'danger')),
             ];
         })->all();
     }
 
     private function hourlyTraffic(): array
     {
-        $logs = PhishingLog::where('created_at', '>=', now()->subHours(6)->startOfHour())->get();
+        $logs = $this->logsQuery()->where('created_at', '>=', now()->subHours(6)->startOfHour())->get();
 
         $traffic = collect(range(6, 0))->map(function (int $hoursAgo) use ($logs): array {
             $hour = now()->subHours($hoursAgo)->startOfHour();
@@ -201,7 +238,7 @@ class AdminController extends Controller
 
     private function statusDistribution(): array
     {
-        $counts = PhishingLog::selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+        $counts = $this->logsQuery()->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
         $total = max(1, (int) $counts->sum());
 
         return collect([
@@ -223,27 +260,29 @@ class AdminController extends Controller
     private function riskDistribution(): array
     {
         $tones = ['Safe' => 'success', 'Low' => 'info', 'Medium' => 'warning', 'High' => 'danger', 'Critical' => 'danger'];
-        $counts = PhishingLog::selectRaw('risk_level, count(*) as aggregate')->groupBy('risk_level')->pluck('aggregate', 'risk_level');
+        $counts = $this->logsQuery()->selectRaw('risk_level, count(*) as aggregate')->groupBy('risk_level')->pluck('aggregate', 'risk_level');
 
         return collect($tones)->map(fn (string $tone, string $label) => [
             'label' => $label, 'count' => (int) ($counts[$label] ?? 0), 'tone' => $tone,
         ])->values()->all();
     }
 
-    private function alertQueue(): array
+    private function alertQueue(): LengthAwarePaginator
     {
-        return Alert::with('campus')->latest()->get()->map(fn (Alert $alert) => [
-            'title' => $alert->title,
-            'campus' => $alert->campus?->code ?? 'System-wide',
-            'severity' => $alert->severity,
-            'owner' => $alert->owner,
-            'status' => $alert->status,
-        ])->all();
+        return $this->alertsQuery()->with('campus')->latest()->orderByDesc('id')
+            ->paginate(10, ['*'], 'alerts_page')->withQueryString()->fragment('priority-alerts')->through(fn (Alert $alert) => [
+                'title' => $alert->title,
+                'campus' => $alert->campus?->code ?? 'System-wide',
+                'severity' => $alert->severity,
+                'owner' => $alert->owner,
+                'status' => $alert->status,
+            ]);
     }
 
     private function notifications(): array
     {
-        return Alert::with('campus')->latest()->limit(2)->get()->map(fn (Alert $alert) => [
+        return $this->alertsQuery()->with('campus')->whereNull('read_at')->latest()->orderByDesc('id')->limit(3)->get()->map(fn (Alert $alert) => [
+            'id' => $alert->id,
             'title' => $alert->title,
             'campus' => $alert->campus?->code ?? 'System-wide',
             'severity' => $alert->severity,
@@ -255,22 +294,63 @@ class AdminController extends Controller
     private function alertSummary(): array
     {
         return [
-            'total' => Alert::count(),
-            'priority' => Alert::whereIn('severity', ['Critical', 'High'])->count(),
-            'active' => Alert::whereNotIn('status', ['Resolved', 'Closed'])->count(),
-            'campuses' => Alert::whereNotNull('campus_id')->distinct('campus_id')->count('campus_id'),
+            'total' => $this->alertsQuery()->count(),
+            'priority' => $this->alertsQuery()->whereIn('severity', ['Critical', 'High'])->count(),
+            'active' => $this->alertsQuery()->whereNotIn('status', ['Resolved', 'Closed'])->count(),
+            'campuses' => $this->alertsQuery()->whereNotNull('campus_id')->distinct('campus_id')->count('campus_id'),
         ];
     }
 
     private function campusOperations(): array
     {
-        return Campus::orderBy('code')->get()->map(fn (Campus $campus) => [
-            'name' => $campus->code,
-            'computers' => $campus->computer_count,
-            'last_sync' => $campus->last_sync_at?->diffForHumans() ?? 'Never',
-            'uptime' => number_format((float) $campus->uptime_percentage, 1).'%',
-            'status' => $campus->status,
+        return collect($this->campusBreakdown())->map(fn (array $campus) => [
+            'name' => $campus['name'],
+            'computers' => $campus['computers'],
+            'last_sync' => $campus['last_sync'],
+            'uptime' => number_format($campus['uptime'], 1).'%',
+            'status' => $campus['health'],
         ])->all();
+    }
+
+    private function visibleCampusCodes(): array
+    {
+        $user = request()->user();
+        if (! $user || ! $user->is_active) {
+            return [];
+        }
+        if ($user->role === 'admin' && $user->campus_name === null) {
+            return Device::CAMPUSES;
+        }
+
+        return in_array($user->role, ['admin', 'campus_admin'], true)
+            && in_array($user->campus_name, Device::CAMPUSES, true)
+                ? [$user->campus_name] : [];
+    }
+
+    private function logsQuery(): Builder
+    {
+        return PhishingLog::query()->whereIn('campus_name', $this->visibleCampusCodes());
+    }
+
+    private function devicesQuery(): Builder
+    {
+        return Device::query()->whereIn('campus_name', $this->visibleCampusCodes());
+    }
+
+    private function campusesQuery(): Builder
+    {
+        return Campus::query()->whereIn('code', $this->visibleCampusCodes());
+    }
+
+    private function alertsQuery(): Builder
+    {
+        $query = Alert::query();
+        $user = request()->user();
+        if ($user && $user->is_active && $user->role === 'admin' && $user->campus_name === null) {
+            return $query;
+        }
+
+        return $query->whereIn('campus_id', $this->campusesQuery()->select('id'));
     }
 
     private function settingsGroups(): array

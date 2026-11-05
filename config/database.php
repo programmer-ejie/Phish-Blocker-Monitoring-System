@@ -96,6 +96,8 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // Match Laravel's timestamp writes and calendar-day queries to Philippine time.
+            'timezone' => env('APP_TIMEZONE', 'Asia/Manila'),
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 

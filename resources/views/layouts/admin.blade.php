@@ -200,9 +200,9 @@
                             <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
                             <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
                         </svg>
-                        @if ($summary['critical_incidents'] > 0)
+                        @if ($unreadAlertCount > 0)
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger mt-2 ms-n2">
-                                {{ $summary['critical_incidents'] }}
+                                {{ $unreadAlertCount }}
                             </span>
                         @endif
                     </a>
@@ -213,29 +213,38 @@
                                     <div class="d-flex gap-3">
                                         <img src="{{ asset('images/slsu.webp') }}" alt="Southern Leyte State University seal" class="avatar avatar-sm rounded-circle bg-white p-1" />
                                         <div class="flex-grow-1 small">
-                                            <p class="mb-0 fw-medium">{{ $notification['title'] }}</p>
+                                            <form method="POST" action="{{ route('admin.alerts.read', $notification['id']) }}">
+                                                @csrf
+                                                <button type="submit" class="btn btn-link p-0 text-start text-body fw-medium">{{ $notification['title'] }}</button>
+                                            </form>
                                             <p class="mb-1">{{ $notification['campus'] }} · {{ $notification['severity'] }} · {{ $notification['status'] }}</p>
                                             <div class="text-secondary">{{ $notification['time'] }}</div>
                                         </div>
                                     </div>
                                 </li>
                             @empty
-                                <li class="px-4 py-4 text-center small text-secondary">No alerts to display.</li>
+                                <li class="px-4 py-4 text-center small text-secondary">No unread alerts.</li>
                             @endforelse
                             <li class="px-4 py-3 text-center">
                                 <a href="{{ route('admin.alerts') }}" class="text-primary">View all notifications</a>
+                                @if ($unreadAlertCount > 0)
+                                    <form method="POST" action="{{ route('admin.alerts.read-all') }}" class="mt-2">
+                                        @csrf
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit">Mark all as read</button>
+                                    </form>
+                                @endif
                             </li>
                         </ul>
                     </div>
                 </li>
                 <li class="ms-3 dropdown">
                     <a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="{{ asset('images/admin-profile.webp') }}" alt="Administrator profile" class="avatar avatar-sm rounded-circle" />
+                        <img src="{{ asset(!empty($adminUser['campus_name']) ? 'images/slsu.webp' : 'images/admin-profile.webp') }}" alt="{{ !empty($adminUser['campus_name']) ? 'SLSU campus account' : 'Administrator profile' }}" class="avatar avatar-sm rounded-circle" />
                     </a>
                     <div class="admin-profile-menu dropdown-menu dropdown-menu-end p-0">
                         <div>
                             <div class="d-flex gap-3 align-items-center border-dashed border-bottom px-3 py-3">
-                                <img src="{{ asset('images/admin-profile.webp') }}" alt="Administrator profile" class="avatar avatar-md rounded-circle" />
+                                <img src="{{ asset(!empty($adminUser['campus_name']) ? 'images/slsu.webp' : 'images/admin-profile.webp') }}" alt="{{ !empty($adminUser['campus_name']) ? 'SLSU campus account' : 'Administrator profile' }}" class="avatar avatar-md rounded-circle" />
                                 <div>
                                     <h4 class="mb-0 small">{{ $adminUser['name'] ?? 'System Administrator' }}</h4>
                                     <p class="mb-0 small">{{ $adminUser['email'] ?? 'admin@gmail.com' }}</p>
@@ -303,6 +312,9 @@
 
     <main id="content" class="content admin-page-content py-10 pb-0">
         <div class="container-fluid admin-content-shell">
+            @if (!empty($adminUser['campus_name']))
+                <div class="alert alert-info py-2" role="status">Campus access: <strong>{{ $adminUser['campus_name'] }}</strong>. Only your campus data is displayed.</div>
+            @endif
             @yield('content')
             @include('layouts.footer')
         </div>

@@ -13,6 +13,7 @@
   if (
     host === "localhost" ||
     host === "127.0.0.1" ||
+    host === "[::1]" ||
     host === "" ||
     window.location.protocol.startsWith("chrome")
   ) {
@@ -72,7 +73,7 @@
     return;
   }
 
-  function callBackgroundFetch(url, timeoutMs = 9000) {
+  function callBackgroundFetch(url, timeoutMs = 80000) {
     return new Promise((resolve) => {
       let responded = false;
 

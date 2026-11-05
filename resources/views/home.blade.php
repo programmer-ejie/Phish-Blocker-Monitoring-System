@@ -164,13 +164,6 @@
                         </p>
                         <div class="text-center text-md-start">
                             <a class="btn btn-primary btn-lg me-md-4 mb-3 mb-md-0 border-0 primary-btn-shadow" href="{{ route('login') }}" role="button">Open Admin Login</a>
-                            <div class="w-100 d-block d-md-none"></div>
-                            <a href="#destination" role="button">
-                                <span class="btn btn-danger round-btn-lg rounded-circle me-3 danger-btn-shadow">
-                                    <i class="fas fa-chart-line" aria-hidden="true"></i>
-                                </span>
-                            </a>
-                            <span class="fw-medium">View UI Preview</span>
                         </div>
                     </div>
                 </div>

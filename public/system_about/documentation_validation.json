@@ -1,0 +1,10 @@
+{
+  "pdf": "Phish_Block_System_Documentation.pdf",
+  "pages": 62,
+  "project_files_inventoried": 868,
+  "words": 27138,
+  "blank_pages": [],
+  "pdf_bytes": 225227,
+  "sha256": "b200bb19c87647f4b0ecb0c252241d21ecd322cee92c351256231a14764b2c9b",
+  "scope": "Local source snapshot only; no live services or database access; no model deserialization."
+}

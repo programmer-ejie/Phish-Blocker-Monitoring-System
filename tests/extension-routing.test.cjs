@@ -94,3 +94,26 @@ test('registration failure preserves UUID and allows retry without sending unreg
   assert.equal(result.calls.length, 3);
   assert.equal(JSON.parse(result.calls[2].options.body).device_uuid, uuid);
 });
+
+for (const name of directories) {
+  test(`${name}: prediction retries transient failures and stops after three attempts`, async () => {
+    const { context } = await runExtension(name, '');
+    let attempts = 0;
+    context.fetchWithTimeout = async (url, options, timeout) => {
+      assert.equal(timeout, 25000);
+      attempts++;
+      if (attempts === 1) throw new Error('fetch-timeout');
+      return { ok: attempts === 3, status: attempts === 3 ? 200 : 503 };
+    };
+    assert.equal((await context.fetchPrediction('https://prediction.example')).ok, true);
+    assert.equal(attempts, 3);
+    attempts = 0;
+    context.fetchWithTimeout = async () => { attempts++; throw new Error('fetch-timeout'); };
+    await assert.rejects(context.fetchPrediction('https://prediction.example'), /fetch-timeout/);
+    assert.equal(attempts, 3);
+    attempts = 0;
+    context.fetchWithTimeout = async () => { attempts++; return { ok: false, status: 422 }; };
+    assert.equal((await context.fetchPrediction('https://prediction.example')).status, 422);
+    assert.equal(attempts, 1);
+  });
+}

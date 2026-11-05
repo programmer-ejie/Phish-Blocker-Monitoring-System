@@ -39,7 +39,7 @@
                 <table class="table mb-0 text-nowrap table-hover align-middle">
                     <thead class="table-light border-light">
                         <tr>
-                            <th>Time</th>
+                            <th>Time (PHT, UTC+8)</th>
                             <th>Score</th>
                             <th>Risk Level</th>
                             <th>Status</th>

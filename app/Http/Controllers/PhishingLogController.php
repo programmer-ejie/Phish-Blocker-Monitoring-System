@@ -25,7 +25,7 @@ class PhishingLogController extends Controller
             'reason' => ['nullable', 'string', 'max:8192'],
             'device_uuid' => ['sometimes', 'required', 'uuid'],
             'computer_number' => ['required_without:device_uuid', 'integer', 'min:1', 'max:4294967295'],
-            'campus_name' => ['required', 'string', 'max:30'],
+            'campus_name' => ['required', Rule::in(Device::CAMPUSES)],
             'metadata' => ['sometimes', 'array'],
             'metadata.ml_engine' => ['nullable', 'string', 'max:100'],
             'metadata.model_threshold' => ['nullable', 'numeric', 'between:0,1'],
@@ -51,14 +51,11 @@ class PhishingLogController extends Controller
             // Existing PostgreSQL deployments already have campus/alert triggers.
             // MySQL and SQLite require these updates in the application instead.
             $usesDatabaseTriggers = DB::getDriverName() === 'pgsql';
-            $campus = null;
-            if (! $usesDatabaseTriggers) {
-                Campus::query()->upsert([
-                    ['code' => $data['campus_name'], 'name' => $data['campus_name'],
-                        'is_active' => true, 'last_sync_at' => now()],
-                ], ['code'], ['is_active', 'last_sync_at', 'updated_at']);
-                $campus = Campus::query()->where('code', $data['campus_name'])->lockForUpdate()->firstOrFail();
-            }
+            Campus::query()->upsert([
+                ['code' => $data['campus_name'], 'name' => $data['campus_name'],
+                    'is_active' => true, 'last_sync_at' => now()],
+            ], ['code'], ['is_active', 'last_sync_at', 'updated_at']);
+            $campus = Campus::query()->where('code', $data['campus_name'])->lockForUpdate()->firstOrFail();
 
             $log = PhishingLog::create([
                 ...$data,
@@ -75,7 +72,7 @@ class PhishingLogController extends Controller
                 'last_sync_at' => now(),
             ]);
 
-            if ($campus) {
+            if (! $usesDatabaseTriggers) {
                 $campus->update([
                     'last_sync_at' => now(),
                 ]);

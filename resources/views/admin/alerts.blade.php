@@ -13,6 +13,20 @@
         </div>
     </div>
 
+    @if (session('status'))
+        <div class="alert alert-success" role="status">{{ session('status') }}</div>
+    @endif
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <form method="POST" action="{{ route('admin.alerts.read-all') }}">
+            @csrf
+            <button type="submit" class="btn btn-outline-primary" @disabled($unreadAlertCount === 0)>Mark all as read ({{ $unreadAlertCount }})</button>
+        </form>
+        <form method="POST" action="{{ route('admin.alerts.delete-all') }}" onsubmit="return confirm('Delete all alerts visible to your account? This cannot be undone. Phishing logs will be kept.');">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-outline-danger" @disabled($alerts->total() === 0)>Delete all alerts</button>
+        </form>
+    </div>
     <div class="row g-3 mb-4">
         <div class="col-xl-3 col-md-6">
             <div class="card h-100"><div class="card-body p-3 d-flex align-items-center gap-3"><span class="rounded-circle bg-primary-subtle text-primary p-2"><i class="ti ti-bell fs-4"></i></span><div><span class="small text-secondary d-block">Total alerts</span><strong class="fs-4">{{ $alertSummary['total'] }}</strong></div></div></div>
@@ -40,6 +54,7 @@
                                 <th>Severity</th>
                                 <th>Owner</th>
                                 <th>Status</th>
+                                <th>Read status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -51,9 +66,19 @@
                                     <td><span class="badge text-bg-{{ $severityTone }}">{{ $alert['severity'] }}</span></td>
                                     <td>{{ $alert['owner'] }}</td>
                                     <td><span class="small">{{ $alert['status'] }}</span></td>
+                                    <td>
+                                        @if ($alert['read'])
+                                            <span class="small text-secondary">Read</span>
+                                        @else
+                                            <form method="POST" action="{{ route('admin.alerts.read', $alert['id']) }}">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">Mark as read</button>
+                                            </form>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="py-5 text-center text-secondary">No alerts found.</td></tr>
+                                <tr><td colspan="6" class="py-5 text-center text-secondary">No alerts found.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
