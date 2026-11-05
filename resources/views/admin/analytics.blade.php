@@ -117,8 +117,8 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header bg-transparent px-4 py-3">
-                    <h4 class="mb-1 h5">Campus Health &amp; Threat Exposure</h4>
-                    <p class="mb-0 small text-secondary">Health combines reported endpoint uptime with the campus detection rate.</p>
+                    <h4 class="mb-1 h5">Campus Activity &amp; Threat Exposure</h4>
+                    <p class="mb-0 small text-secondary">Activity is based on check-ins and received scans in the last 15 minutes; inactivity does not confirm a device is offline.</p>
                 </div>
                 <div class="card-body p-4">
                     <div class="row g-3">
@@ -129,10 +129,10 @@
                                         <strong>{{ $campus['name'] }}</strong>
                                         <span class="badge text-bg-{{ $campus['tone'] }}">{{ $campus['health'] }}</span>
                                     </div>
-                                    <div class="d-flex justify-content-between small mb-1"><span>Health score</span><strong>{{ $campus['health_score_label'] }}</strong></div>
-                                    <div class="progress mb-3"><div class="progress-bar bg-{{ $campus['tone'] }}" style="width: {{ $campus['health_score'] ?? 0 }}%"></div></div>
+                                    <div class="d-flex justify-content-between small mb-1"><span>Recently active endpoints</span><strong>{{ $campus['active_computers'] }} / {{ $campus['computers'] }}</strong></div>
+                                    <div class="progress mb-3"><div class="progress-bar bg-{{ $campus['tone'] }}" style="width: {{ $campus['activity_percentage'] }}%"></div></div>
                                     <div class="d-flex justify-content-between small text-secondary"><span>Threat exposure</span><strong class="text-{{ $campus['threat_rate'] >= 25 ? 'danger' : ($campus['threat_rate'] > 0 ? 'warning' : 'success') }}">{{ $campus['threat_rate'] }}%</strong></div>
-                                    <div class="small text-secondary mt-2">{{ $campus['computers'] }} endpoints · {{ $campus['uptime_label'] }} uptime</div>
+                                    <div class="small text-secondary mt-2">{{ $campus['computers'] }} endpoints · {{ $campus['active_computers'] }} active in last 15 min</div>
                                 </div>
                             </div>
                         @endforeach

@@ -6,29 +6,37 @@ use App\Models\PhishingLog;
 use App\Models\User;
 use Illuminate\Support\Str;
 
-test('missing uptime stays unknown while measured zero remains at risk', function () {
+test('recent activity counts unique endpoints and becomes inactive after fifteen minutes', function () {
+    $this->freezeTime();
     $user = User::factory()->create(['role' => 'admin', 'is_active' => true]);
-    $campus = Campus::create(['code' => 'SLSU-SanJuan', 'name' => 'San Juan', 'uptime_percentage' => null]);
-    PhishingLog::create(['url' => 'https://example.com', 'campus_name' => $campus->code,
-        'computer_number' => 1, 'risk_level' => 'Low', 'status' => 'Proceed']);
+    Campus::create(['code' => 'SLSU-SanJuan', 'name' => 'San Juan', 'uptime_percentage' => null]);
+    Device::create(['device_uuid' => (string) Str::uuid(), 'campus_name' => 'SLSU-SanJuan',
+        'computer_number' => 1, 'name' => 'PC1', 'last_seen_at' => now()]);
+    Device::create(['device_uuid' => (string) Str::uuid(), 'campus_name' => 'SLSU-SanJuan',
+        'computer_number' => 2, 'name' => 'PC2', 'last_seen_at' => now()->subHour()]);
+    foreach ([1, 1, 3] as $number) {
+        PhishingLog::create(['url' => 'https://example.com', 'campus_name' => 'SLSU-SanJuan',
+            'computer_number' => $number, 'risk_level' => 'Low', 'status' => 'Proceed']);
+    }
     foreach (['/admin/dashboard' => 'campusBreakdown', '/admin/analytics' => 'campusAnalytics'] as $url => $key) {
-        $this->actingAs($user)->get($url)->assertOk()->assertSee('Unknown')->assertViewHas($key, function ($items) {
+        $this->actingAs($user)->get($url)->assertOk()->assertSee('Recently active')->assertDontSee('Uptime')->assertViewHas($key, function ($items) {
             $item = collect($items)->firstWhere('name', 'SLSU-SanJuan');
-            expect($item['uptime'])->toBeNull();
-            expect($item['health_score'])->toBeNull();
-            expect($item['health'])->toBe('Unknown');
-            expect($item['tone'])->toBe('secondary');
-            expect($item['proceed'])->toBe(1);
+            expect($item['computers'])->toBe(3);
+            expect($item['active_computers'])->toBe(2);
+            expect($item['activity_percentage'])->toBe(67);
+            expect($item['health'])->toBe('Recently active');
             return true;
         });
     }
-    $this->get('/admin/campuses')->assertOk()->assertViewHas('campuses', fn ($items) => collect($items)->firstWhere('name', 'SLSU-SanJuan')['uptime'] === 'Unknown');
-    $campus->update(['uptime_percentage' => 0]);
+    $this->get('/admin/campuses')->assertOk()->assertViewHas('campuses', fn ($items) => collect($items)->firstWhere('name', 'SLSU-SanJuan')['active_computers'] === 2);
+    $this->travel(15)->minutes();
+    $this->get('/admin/dashboard')->assertViewHas('campusBreakdown', fn ($items) => collect($items)->firstWhere('name', 'SLSU-SanJuan')['active_computers'] === 2);
+    $this->travel(1)->seconds();
     $this->get('/admin/dashboard')->assertViewHas('campusBreakdown', function ($items) {
         $item = collect($items)->firstWhere('name', 'SLSU-SanJuan');
-        expect($item['uptime'])->toBe(0.0);
-        expect($item['health_score'])->toBe(0);
-        expect($item['health'])->toBe('At Risk');
+        expect($item['active_computers'])->toBe(0);
+        expect($item['health'])->toBe('Inactive');
+        expect($item['scans'])->toBe(3);
         return true;
     });
 });

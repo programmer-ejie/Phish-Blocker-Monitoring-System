@@ -6,7 +6,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h1 class="fs-3 mb-1">Campus Operations</h1>
-                    <p class="mb-0">Frontend view for rollout coverage, sync status, connected devices, and uptime by campus.</p>
+                    <p class="mb-0">Device activity and received scans by campus. Recently active means activity within the last 15 minutes.</p>
                 </div>
             </div>
         </div>
@@ -33,8 +33,8 @@
                             <strong>{{ $campus['last_sync'] }}</strong>
                         </div>
                         <div class="d-flex justify-content-between">
-                            <span>Uptime</span>
-                            <strong>{{ $campus['uptime'] }}</strong>
+                            <span>Active (15 min)</span>
+                            <strong>{{ $campus['active_computers'] }} / {{ $campus['computers'] }}</strong>
                         </div>
                     </div>
                 </div>

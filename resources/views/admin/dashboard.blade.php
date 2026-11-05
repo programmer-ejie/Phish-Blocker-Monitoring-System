@@ -35,8 +35,8 @@
     <div class="card mb-3">
         <div class="card-header bg-transparent d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 py-3">
             <div>
-                <h4 class="mb-1 h5">Campus Health Intelligence</h4>
-                <p class="mb-0 small text-secondary">Live uptime, endpoint coverage, scan outcomes, and computed health</p>
+                <h4 class="mb-1 h5">Campus Activity</h4>
+                <p class="mb-0 small text-secondary">Activity within the last 15 minutes, endpoint coverage, and scan outcomes. Inactive does not mean offline.</p>
             </div>
             <a href="{{ route('admin.campuses') }}" class="btn btn-sm btn-outline-secondary">Campus details</a>
         </div>
@@ -56,11 +56,11 @@
                                 <span class="badge flex-shrink-0 bg-{{ $campus['tone'] }}-subtle text-{{ $campus['tone'] }} border border-{{ $campus['tone'] }}">{{ $campus['health'] }}</span>
                             </div>
                             <div class="d-flex justify-content-between small mb-2">
-                                <span>Health score</span><strong>{{ $campus['health_score_label'] }}</strong>
+                                <span>Recently active endpoints</span><strong>{{ $campus['active_computers'] }} / {{ $campus['computers'] }}</strong>
                             </div>
-                            <div class="health-track mb-3"><span class="bg-{{ $campus['tone'] }}" style="width: {{ $campus['health_score'] ?? 0 }}%"></span></div>
+                            <div class="health-track mb-3"><span class="bg-{{ $campus['tone'] }}" style="width: {{ $campus['activity_percentage'] }}%"></span></div>
                             <div class="row g-2">
-                                <div class="col-sm-3 col-6"><div class="campus-metric"><strong>{{ $campus['uptime_label'] }}</strong><span>Uptime</span></div></div>
+                                <div class="col-sm-3 col-6"><div class="campus-metric"><strong>{{ $campus['active_computers'] }}</strong><span>Active (15 min)</span></div></div>
                                 <div class="col-sm-3 col-6"><div class="campus-metric"><strong>{{ $campus['computers'] }}</strong><span>Endpoints</span></div></div>
                                 <div class="col-sm-3 col-6"><div class="campus-metric"><strong class="text-success">{{ $campus['proceed'] }}</strong><span>Proceed</span></div></div>
                                 <div class="col-sm-3 col-6"><div class="campus-metric"><strong class="text-danger">{{ $campus['blocked'] }}</strong><span>Blocked</span></div></div>

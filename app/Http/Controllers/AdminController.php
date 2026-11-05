@@ -211,41 +211,42 @@ class AdminController extends Controller
     {
         $logs = $this->logsQuery()->get(['campus_name', 'status', 'computer_number', 'created_at']);
         $devices = $this->devicesQuery()->get();
-        $campuses = $this->campusesQuery()->get()->keyBy('code');
+        $now = now()->startOfSecond();
+        $cutoff = $now->copy()->subMinutes(15);
 
-        return collect($this->visibleCampusCodes())->map(function (string $code) use ($logs, $devices, $campuses): array {
-            $campus = $campuses->get($code) ?? new Campus(['code' => $code]);
-            $campusLogs = $logs->where('campus_name', $campus->code);
+        return collect($this->visibleCampusCodes())->map(function (string $code) use ($logs, $devices, $now, $cutoff): array {
+            $campusLogs = $logs->where('campus_name', $code);
             $campusDevices = $devices->where('campus_name', $code);
             $computers = $campusLogs->pluck('computer_number')->merge($campusDevices->pluck('computer_number'))->filter(fn ($number) => $number !== null)->unique()->count();
-            $lastSync = $campusLogs->pluck('created_at')->merge($campusDevices->pluck('last_seen_at'))->filter()->sortDesc()->first();
+            $lastSync = $campusLogs->pluck('created_at')->merge($campusDevices->pluck('last_seen_at'))->filter(fn ($time) => $time !== null && $time <= $now)->sortDesc()->first();
             $scans = $campusLogs->count();
             $blocked = $campusLogs->where('status', 'Block')->count();
             $suspicious = $campusLogs->where('status', 'Suspicious')->count();
             $proceed = $campusLogs->where('status', 'Proceed')->count();
             $threatRate = $scans ? (($blocked + $suspicious) / $scans) * 100 : 0;
-            $uptime = $campus->uptime_percentage === null ? null : (float) $campus->uptime_percentage;
-            $healthScore = $uptime === null ? null : max(0, min(100, (int) round($uptime - ($threatRate * 0.35))));
-            $health = $healthScore === null ? 'Unknown' : ($healthScore >= 95 ? 'Healthy' : ($healthScore >= 85 ? 'Watch' : 'At Risk'));
+            $recentLogs = $campusLogs->filter(fn ($log) => $log->created_at !== null && $log->created_at >= $cutoff && $log->created_at <= $now);
+            $recentDevices = $campusDevices->filter(fn ($device) => $device->last_seen_at !== null && $device->last_seen_at >= $cutoff && $device->last_seen_at <= $now);
+            $activeComputers = $recentLogs->pluck('computer_number')->merge($recentDevices->pluck('computer_number'))
+                ->filter(fn ($number) => $number !== null)->unique()->count();
+            $activityPercentage = $computers ? (int) round($activeComputers / $computers * 100) : 0;
+            $activity = $lastSync === null ? 'No activity' : ($lastSync >= $cutoff ? 'Recently active' : 'Inactive');
 
             return [
-                'name' => $campus->code,
+                'name' => $code,
                 'scans' => $scans,
                 'blocked' => $blocked,
                 'suspicious' => $suspicious,
                 'proceed' => $proceed,
                 'computers' => $computers,
-                'uptime' => $uptime,
-                'uptime_label' => $uptime === null ? 'Unknown' : $uptime.'%',
+                'active_computers' => $activeComputers,
+                'activity_percentage' => $activityPercentage,
                 'last_sync' => $lastSync?->diffForHumans() ?? 'Never',
-                'health_score' => $healthScore,
-                'health_score_label' => $healthScore === null ? 'Unknown' : $healthScore.'%',
                 'threat_rate' => (int) round($threatRate),
                 'proceed_percentage' => $scans ? (int) round(($proceed / $scans) * 100) : 0,
                 'suspicious_percentage' => $scans ? (int) round(($suspicious / $scans) * 100) : 0,
                 'blocked_percentage' => $scans ? (int) round(($blocked / $scans) * 100) : 0,
-                'health' => $lastSync ? $health : 'No activity',
-                'tone' => ! $lastSync || $healthScore === null ? 'secondary' : ($health === 'Healthy' ? 'success' : ($health === 'Watch' ? 'warning' : 'danger')),
+                'health' => $activity,
+                'tone' => $activity === 'Recently active' ? 'success' : 'secondary',
             ];
         })->all();
     }
@@ -340,7 +341,7 @@ class AdminController extends Controller
             'name' => $campus['name'],
             'computers' => $campus['computers'],
             'last_sync' => $campus['last_sync'],
-            'uptime' => $campus['uptime'] === null ? 'Unknown' : number_format($campus['uptime'], 1).'%',
+            'active_computers' => $campus['active_computers'],
             'tone' => $campus['tone'],
             'status' => $campus['health'],
         ])->all();
